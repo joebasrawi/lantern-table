@@ -6,6 +6,7 @@ for (const name of [
   'ai-usage',
   'portrait-generation',
   'attention',
+  'notification-cue',
   'engine',
   'dm-output',
   'portrait',
@@ -22,7 +23,7 @@ for (const name of [
       },
     })
     .outputText.replace(
-      /from '\.\/(types|engine|context|portrait)'/g,
+      /from '\.\/(types|engine|context|portrait|attention)'/g,
       "from './$1.js'",
     );
   writeFileSync(`.test-build/${name}.js`, code);
@@ -46,6 +47,7 @@ for (const name of [
   'recovery',
   'signup',
   'account-deletion',
+  'notification-queue',
 ]) {
   writeFileSync(
     `.test-build/railway/${name}.js`,
@@ -56,7 +58,11 @@ for (const name of [
           module: ts.ModuleKind.ESNext,
         },
       })
-      .outputText.replace("from './storage'", "from './storage.js'")
+      .outputText.replace(
+        "from '../game/notification-cue'",
+        "from '../notification-cue.js'",
+      )
+      .replace("from './storage'", "from './storage.js'")
       .replace("from './recovery'", "from './recovery.js'")
       .replace("from './signup'", "from './signup.js'")
       .replace("from './account-deletion'", "from './account-deletion.js'"),

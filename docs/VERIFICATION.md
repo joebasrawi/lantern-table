@@ -290,3 +290,10 @@ Image cleanup preserves active references, removes known private/solo assets, re
 Typecheck, lint, 103 unit tests and Railway build passed; the full production-runtime multiplayer/font suite also passed. Four focused deletion tests cover confirmation/password/origin checks, stale membership fingerprints, solo/archived/private image deletion, shared image/history preservation, other-account isolation, reset/registration removal, full transaction rollback around active leases, failed cleanup retry, in-flight uploads, late inserts and restart with the original provisioning environment.
 
 A browser host deleted a disposable solo campaign (`fabab277-3143-4545-abbd-f5f4d572784d`) with its account. The old password and another existing session were rejected; the independent player account remained authenticated. The warning page was visually inspected. After the final membership-fingerprint and completion-page changes, a fresh disposable browser account completed the final form and reached Account deleted. Both browser tabs were closed. No production account was deleted. Deployment verification follows separately.
+
+
+## Notification queue foundation (not enabled)
+
+Added stable, private-content-free turn/decision/DM cue identities and a Railway SQLite outbox with membership and current-state rechecks, delivery leases, stale-response protection, bounded retries and cascading revocation. Nine focused tests exercise these behaviors, including independent database connections. The browser opt-in API, service worker, provider delivery and scheduled integration are still missing; no hosted notifications are sent. See [NOTIFICATIONS.md](NOTIFICATIONS.md) for the remaining integration and evidence requirements.
+
+Local validation: all 112 unit tests, TypeScript and lint passed for this change. No browser-delivery test or production deployment is claimed.
