@@ -12,14 +12,16 @@ Configure these Railway service variables:
 - `LANTERN_ORIGIN=https://YOUR-RAILWAY-DOMAIN` (exact origin, no trailing slash)
 - `LANTERN_ACCOUNTS`: the private account configuration described below
 - `OPENAI_API_KEY`: a runtime secret, never a Docker build argument
-- `OPENAI_MODEL=gpt-5.4-mini` or your supported provider model
+- `OPENAI_MODEL=gpt-5.4-mini` or another supported OpenAI text model
+- `LANTERN_AI_DAILY_LIMIT=100` for the shared UTC-day narration allowance; 0 pauses AI narration
+- Optional portrait previews: `LANTERN_PORTRAITS_ENABLED=true`, `LANTERN_PORTRAIT_DAILY_LIMIT=10`, and `OPENAI_IMAGE_MODEL=gpt-image-1-mini`
 - `LANTERN_BACKGROUND_TURNS=true` to enable the one-minute deadline worker
 
 Deploy with the Railway CLI from this directory. Use `railway up --detach`, then check the returned deployment until healthy. See [Railway CLI deployment](https://docs.railway.com/cli/deploying) and [persistent volumes](https://docs.railway.com/guides/volumes).
 
 ## Private accounts
 
-Railway uses its own private email/password accounts, not Sign in with ChatGPT. There is no public signup. The operator can provision a player with:
+Railway uses its own private email/password accounts, not Sign in with ChatGPT. Public signup is disabled by default; optional verified-email registration is described below. The operator can provision a private player with:
 
 ```sh
 node scripts/provision-account.mjs player@example.com 'Player name' /PRIVATE/NEW/DIRECTORY
@@ -29,7 +31,7 @@ The script writes a randomly generated password to `login.txt` and a salted scry
 
 Sessions are random opaque tokens; only their SHA-256 hashes are stored. Cookies use HttpOnly, SameSite=Lax, and Secure on HTTPS. Login checks the configured origin, enforces bounded form bodies and rate limits, and uses scrypt verification. Cloudflare/Sites identity headers and local test cookies cannot authenticate to this build. Campaign and image membership checks remain in the shared game service.
 
-This first private deployment does not include self-service registration, password reset emails, or a full account management UI. Signed-in players can choose Change password from the campaign list, enter their current password and a new password of 12–200 characters, and then sign in again. Changing a password revokes all existing sessions. Operator provisioning is required for additional players. Do not email the AI provider key or reuse the host's login for friends. Campaign invitations grant campaign membership only after the recipient signs in with a provisioned account.
+Self-service registration and password-reset email delivery are not enabled on the hosted private deployment. Their source integrations are described below; full account management and account deletion remain incomplete. Signed-in players can choose Change password from the campaign list, enter their current password and a new password of 12–200 characters, and then sign in again. Changing a password revokes all existing sessions. Operator provisioning is required for additional players. Do not email the AI provider key or reuse the host's login for friends. Campaign invitations grant campaign membership only after the recipient signs in with a provisioned account.
 
 ## Storage and background turns
 
@@ -68,3 +70,10 @@ Request limits are three emails per address per 15 minutes and twenty requests g
 A visitor requests an email verification link, then chooses a display name and password only after opening that link. No account or password is stored before mailbox proof. Verification tokens are stored as hashes, expire after 30 minutes, are replaced by a newer request, and can create only one account. Merely opening a link does not consume it. Completion creates a random account identity, consumes the registration and asks the player to sign in normally. It does not create sessions automatically or add campaign memberships. Existing accounts receive the same registration confirmation but are never overwritten.
 
 Signup email requests are limited to three per email per 15 minutes and twenty globally per minute. Verification submissions are limited to 100 per minute. Mail failure invalidates its link and logs only a generic error. Verification pages use no-store/no-referrer and no external assets; deployment logs must redact the `verify` URL parameter. This integration uses the same configured sender as recovery. Live sender verification, deliverability and broader public-launch usage controls must be addressed before enabling open registration.
+
+
+## Portrait generation and campaign membership
+
+Portrait previews use a separate image request allowance and the same runtime OpenAI credential. Generation is disabled unless explicitly enabled. Preview/save behavior, supported output parameters, timeout limits and billing boundaries are documented in the [README](../README.md#generated-character-portraits). Failed or discarded generations can still consume provider usage.
+
+Accepted host handoffs change permissions and rotate campaign invitations in a single saved update. Members can leave and later restore their archived character with a valid invitation; hosts must hand off first. Departure retains history and archived character data in SQLite. Archived characters are omitted from normal views and user-facing exports, including host exports. Back up the full volume to preserve all accounts, sessions, memberships, archives and private image files; the JSON campaign export alone is not a full server backup.

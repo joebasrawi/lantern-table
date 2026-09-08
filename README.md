@@ -67,6 +67,8 @@ pnpm build
 
 Lint covers authored application, rules, persistence, test, and configuration code. Generated UI library files are retained unmodified. Unit and HTTP integration tests cover ability budget, turn ownership, resources, range, privacy, voting, persistent reloads, membership, stale writes, concurrency and idempotency. Browser verification covers hosted owner login and saved return, desktop and 390-pixel views, local draft reload/submission, and an asynchronous human-DM loop in independent local sessions. See [browser playtest](docs/BROWSER_PLAYTEST.md) for exact evidence and limits; physical devices and two independent hosted browsers remain unverified.
 
+See [release history](docs/CHANGELOG.md) for versioned changes.
+
 ## Hosting and open-source status
 
 MIT-licensed source is published at [joebasrawi/lantern-table](https://github.com/joebasrawi/lantern-table). The current private deployment runs on Railway with its own accounts, persistent SQLite and private image storage; see [Railway setup](docs/RAILWAY.md). Password changes are live. Email recovery and optional verified-email registration are implemented but need a configured sender and live delivery verification. The initial hosted preview uses Sites, D1 and Sign in with ChatGPT. Site access policy applies before campaign invitations: a private Site invitation does not itself grant a friend access to the Site. A standalone Workers build with verified Cloudflare Access identity is available; see [self-hosting](docs/SELF_HOSTING.md). Its live custom-domain sign-in has not been tested. Wider-audience deployment is not complete.
@@ -77,9 +79,9 @@ This is the first playable milestone, not the finished platform. See `docs/PRODU
 
 - Semantic recall and archival beyond the current keyword-based history search, richer AI encounter direction, and expanded custom ability effects beyond the two validated templates.
 - Expanded equipment mechanics and rule content. Generated character portrait previews are available when enabled by the server owner. Character identity, concept, and preset portrait can already be edited.
-- Notifications, simultaneous combat, delegation, co-hosts and host transfers; the Railway deadline processor is already deployed. DM/rule/voting changes are already staged until current play finishes.
+- Notifications, simultaneous combat, delegation, and co-hosts; accepted host handoff and character-preserving campaign departure are implemented. the Railway deadline processor is already deployed. DM/rule/voting changes are already staged until current play finishes.
 - Broader tactical maps, world map editing, voice/ambience, additional genre artwork.
-- Live verification of self-hosted identity, account lifecycle, provider choice/local models, provider-neutral hosting, cost/billing controls and public release.
+- Live verification of self-hosted identity, account deletion, provider choice/local models, broader cost/billing controls and public onboarding. Persistent AI/image request allowances are implemented; they are not dollar budgets.
 - Multi-device browser and accessibility testing before claiming release readiness.
 
 ## Artwork
