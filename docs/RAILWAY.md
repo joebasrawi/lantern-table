@@ -59,7 +59,7 @@ The Forgot password page explains that recovery is unavailable when these settin
 
 Request limits are three emails per address per 15 minutes and twenty requests globally per minute; reset submissions are limited to 100 per minute. Mail requests have a ten-second timeout. Failed delivery invalidates its issued token and logs a generic error without the recipient or token. Delivery is not queued or retried by the app. These limits are intended for the private playtest and need reconsideration before a large public launch.
 
-`tests/recovery.test.mjs` uses an intercepted mail API, with no external emails, to check tokens, expiry, replacement, concurrency, session revocation, old-password rejection, rate limiting, origin protection and provider failure. Live delivery and browser completion remain unverified. Public signup remains unimplemented.
+`tests/recovery.test.mjs` uses an intercepted mail API, with no external emails, to check tokens, expiry, replacement, concurrency, session revocation, old-password rejection, rate limiting, origin protection and provider failure. Live delivery and browser completion remain unverified. Optional verified-email signup is implemented as described below and remains disabled until mail is configured.
 
 ## Optional verified-email registration (not enabled on the private deployment)
 
