@@ -318,12 +318,35 @@ export default function Game() {
     busyRef.current = true;
     try {
       const c = campaign;
-      const result = await request('', {
-        ...(c ? { id: c.id, version: c.version } : {}),
-        requestId: crypto.randomUUID(),
-        ...data,
-      });
-      if (result.state) {
+      const result = await request<CampaignView | { left: true; id: string }>(
+        '',
+        {
+          ...(c ? { id: c.id, version: c.version } : {}),
+          requestId: crypto.randomUUID(),
+          ...data,
+        },
+      );
+      if ('left' in result && result.left === true && data.op === 'leave') {
+        setCampaign(null);
+        setPanel('');
+        setCampaigns((items) => items.filter((item) => item.id !== result.id));
+        setNotice(
+          'You left the campaign. A valid invitation lets you return with your saved character.',
+        );
+        history.replaceState(null, '', '/');
+      }
+      if ('state' in result) {
+        if (data.op === 'join') {
+          setNotice('');
+          setTab('Adventure');
+          setCatchUp(
+            result.state.characters.some(
+              (character) => character.userId === user?.id,
+            )
+              ? 'Welcome back. Your saved character is ready.'
+              : 'Welcome to the party. Create your character to join the adventure.',
+          );
+        }
         setCampaign(result);
         history.replaceState(null, '', `/?campaign=${result.id}`);
       }
@@ -388,9 +411,6 @@ export default function Game() {
     } catch {}
     if (await post({ op: 'join', invite: code })) {
       setJoinCode('');
-      setCatchUp(
-        'Welcome to the party. Create your character to join the adventure.',
-      );
     }
   }
   async function copyInvite() {
@@ -953,6 +973,7 @@ export default function Game() {
               post={post}
               busy={busy}
             />
+            <LeaveCampaign host={!!host} busy={busy} post={post} />
             <div className="settings-footer">
               {host && (
                 <button onClick={copyInvite}>
@@ -3404,6 +3425,54 @@ function HostHandoff({
           Offering or accepting waits until all current encounters, decisions,
           and pending actions are resolved. You can still cancel an offer.
         </p>
+      )}
+    </details>
+  );
+}
+
+function LeaveCampaign({
+  host,
+  busy,
+  post,
+}: {
+  host: boolean;
+  busy: boolean;
+  post: Post;
+}) {
+  const [confirmed, setConfirmed] = useState(false);
+  return (
+    <details>
+      <summary>Leave campaign</summary>
+      {host ? (
+        <p>Hand off the campaign host role to another member before leaving.</p>
+      ) : (
+        <form
+          onSubmit={async (e) => {
+            e.preventDefault();
+            if (confirmed) await post({ op: 'leave', confirm: true });
+          }}
+        >
+          <p>
+            Leaving removes campaign access and your character from the active
+            party. Your character, equipment, progress, and notes stay saved for
+            a return with a valid invitation. Story history remains with the
+            group. This does not delete your account.
+          </p>
+          <p className="muted">
+            Wait until encounters, votes, and all pending actions are resolved.
+            You can simply close the game if you only need a break.
+          </p>
+          <label>
+            <input
+              type="checkbox"
+              checked={confirmed}
+              disabled={busy}
+              onChange={(e) => setConfirmed(e.target.checked)}
+            />{' '}
+            I want to leave this campaign.
+          </label>
+          <button disabled={busy || !confirmed}>Leave campaign</button>
+        </form>
       )}
     </details>
   );

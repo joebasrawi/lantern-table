@@ -725,6 +725,101 @@ console.log(
   'PASS: accepted host handoff, immediate privilege and privacy change, invite rotation, idempotency and saved membership',
 );
 
+assert.equal(
+  (await handoffPost('local_2', { op: 'leave', confirm: true })).status,
+  403,
+);
+assert.equal((await handoffPost('local_1', { op: 'leave' })).status, 400);
+await handoffPost('local_1', {
+  op: 'decision',
+  question: 'Wait here?',
+  options: ['Yes', 'No'],
+});
+assert.equal(
+  (await handoffPost('local_1', { op: 'leave', confirm: true })).status,
+  400,
+);
+await handoffPost('local_2', { op: 'dm', kind: 'cancelDecision' });
+const beforeDeparture = (
+  await api('local_1', null, `?id=${handoffCampaign.id}`)
+).data;
+const savedDeparting = beforeDeparture.state.characters.find(
+  (c) => c.userId === (identities.local_1 || 'local_1'),
+);
+const leaving = {
+  op: 'leave',
+  confirm: true,
+  id: handoffCampaign.id,
+  version: beforeDeparture.version,
+};
+assert.equal((await api('local_1', leaving)).status, 200);
+assert.equal((await api('local_1', leaving)).status, 200);
+assert.equal(
+  (await api('local_1', null, `?id=${handoffCampaign.id}`)).status,
+  404,
+);
+assert.ok(!(await listFor('local_1')).some((c) => c.id === handoffCampaign.id));
+const remaining = (await api('local_2', null, `?id=${handoffCampaign.id}`))
+  .data;
+assert.ok(
+  !remaining.members.some(
+    (m) => m.userId === (identities.local_1 || 'local_1'),
+  ),
+);
+assert.equal(remaining.state.characters.length, 0);
+assert.equal(remaining.state.retiredCharacters, undefined);
+await handoffPost('local_2', {
+  op: 'character',
+  ...p,
+  name: 'Replacement scout',
+});
+await handoffPost('local_2', {
+  op: 'decision',
+  question: 'Keep watch?',
+  options: ['Yes', 'No'],
+});
+assert.equal(
+  (await api('local_1', { op: 'join', invite: accepted.data.invite })).status,
+  400,
+);
+assert.equal(
+  (await api('local_1', null, `?id=${handoffCampaign.id}`)).status,
+  404,
+);
+await handoffPost('local_2', { op: 'dm', kind: 'cancelDecision' });
+const rejoined = await Promise.all([
+  api('local_1', { op: 'join', invite: accepted.data.invite }),
+  api('local_1', { op: 'join', invite: accepted.data.invite }),
+]);
+assert.ok(rejoined.some((r) => r.status === 200));
+assert.ok(rejoined.every((r) => [200, 409].includes(r.status)));
+const afterReturn = (await api('local_1', null, `?id=${handoffCampaign.id}`))
+  .data;
+const returned = afterReturn.state.characters.find(
+  (c) => c.userId === savedDeparting.userId,
+);
+assert.deepEqual(
+  { ...returned, x: savedDeparting.x, y: savedDeparting.y },
+  savedDeparting,
+);
+assert.equal(
+  afterReturn.state.characters.filter((c) => c.userId === savedDeparting.userId)
+    .length,
+  1,
+);
+assert.equal(
+  new Set(afterReturn.state.characters.map((c) => `${c.x},${c.y}`)).size,
+  2,
+);
+assert.equal(
+  afterReturn.members.filter((m) => m.userId === savedDeparting.userId).length,
+  1,
+);
+assert.equal((await api('local_1', leaving)).status, 409);
+console.log(
+  'PASS: confirmed departure revokes access, hides archived character, waits for shared play, and concurrent rejoin restores one unchanged build with a free position',
+);
+
 if (credentials) {
   const nextPassword = 'test-only-' + crypto.randomUUID();
   const changed = await fetch(base + '/api/auth?password', {

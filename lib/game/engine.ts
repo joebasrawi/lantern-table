@@ -197,8 +197,7 @@ export function makeCharacter(
     xp: 0,
     absenceConsent: v.absenceConsent === true,
     hostDefenseConsent: v.hostDefenseConsent === true,
-    x: s.characters.length % 7,
-    y: 5 + Math.floor(s.characters.length / 7),
+    ...availablePartyPosition(s.characters),
   };
 }
 export const modifier = (score: number) => Math.floor((score - 10) / 2);
@@ -503,6 +502,7 @@ export function sanitize(
   host: boolean,
 ): CampaignState {
   const copy = structuredClone(s);
+  delete copy.retiredCharacters;
   copy.receipts = {};
   copy.seen = { [userId]: copy.seen[userId] || '' };
   copy.characters = copy.characters.map((c) => ({
@@ -981,4 +981,67 @@ export function hostHandoff(
     `${target.name} accepted the campaign host role. The previous invitation link has been replaced.`,
   );
   return target.userId;
+}
+
+export function departCampaign(
+  s: CampaignState,
+  userId: string,
+  userName: string,
+  isHost: boolean,
+) {
+  if (isHost)
+    throw new GameError('Hand off the campaign host role before leaving.', 403);
+  if (s.encounter || s.decision || s.pending.length)
+    throw new GameError(
+      'Leave after the current encounter, decision, and pending actions are resolved.',
+    );
+  const character = s.characters.find((c) => c.userId === userId);
+  if (character) {
+    s.retiredCharacters = [
+      ...(s.retiredCharacters || []).filter((c) => c.userId !== userId),
+      character,
+    ];
+    s.characters = s.characters.filter((c) => c.userId !== userId);
+  }
+  if (s.hostOffer?.to === userId) delete s.hostOffer;
+  addEvent(
+    s,
+    'system',
+    'Campaign',
+    character
+      ? `${character.name} left the active party. Their character is saved for a future return.`
+      : `${userName} left the campaign.`,
+  );
+}
+
+export function restoreDepartedCharacter(
+  s: CampaignState,
+  userId: string,
+): boolean {
+  const character = s.retiredCharacters?.find((c) => c.userId === userId);
+  if (!character) return false;
+  if (s.encounter || s.decision || s.pending.length)
+    throw new GameError(
+      'Rejoin after the current encounter, decision, and pending actions so your saved character can return.',
+    );
+  if (s.characters.some((c) => c.userId === userId))
+    throw new GameError('This character is already active.');
+  if (s.characters.some((c) => c.x === character.x && c.y === character.y))
+    Object.assign(character, availablePartyPosition(s.characters));
+  s.characters.push(character);
+  s.retiredCharacters = s.retiredCharacters!.filter((c) => c.userId !== userId);
+  addEvent(
+    s,
+    'system',
+    'Campaign',
+    `${character.name} returned to the party with their saved equipment and progress.`,
+  );
+  return true;
+}
+
+function availablePartyPosition(characters: Character[]) {
+  for (const y of [5, 6, 7, 4, 3, 2, 1, 0])
+    for (let x = 0; x < 8; x++)
+      if (!characters.some((c) => c.x === x && c.y === y)) return { x, y };
+  throw new GameError('There is no open position for this character.');
 }

@@ -3,6 +3,7 @@ import {
   create,
   draft,
   join,
+  leave,
   list,
   mutate,
   view,
@@ -86,6 +87,7 @@ export async function POST(request: Request) {
     if (!user) return json({ error: 'Sign in to play.' }, 401);
     if (v.op === 'create') return json(await create(user, v));
     if (v.op === 'join') return json(await join(user, v.invite));
+    if (v.op === 'leave') return json(await leave(user, v));
     if (v.op === 'draft') return json(await draft(user, v));
     return json(await mutate(user, v));
   } catch (e) {

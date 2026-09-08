@@ -124,6 +124,7 @@ export type Pending = {
   at: string;
 };
 export type CampaignState = {
+  retiredCharacters?: Character[];
   hostOffer?: { from: string; to: string };
   sceneAsset?: string;
   sceneUrl?: string;

@@ -179,4 +179,13 @@ Under Campaign settings → Campaign host, the current host can nominate an exis
 
 Acceptance changes host authority and replaces the invitation token in the same saved campaign update. The previous link becomes invalid; the new host can copy a replacement. Both members and their characters remain. Campaign DM notes and player notes shared with the DM become available to the new host; personal character notes remain visible only to their owner. The former host loses privileged API access immediately; open screens reflect the change when refreshed. A former host viewing DM Desk falls back to Adventure after the next state refresh. In-flight assisted drafts recheck current host authority before returning.
 
-This supports a cooperative handoff, not automatic takeover from an unreachable owner. Leaving a campaign and deleting accounts remain separate work.
+This supports a cooperative handoff, not automatic takeover from an unreachable owner. Members can leave as described below; deleting accounts remains separate work.
+
+
+### Leaving and returning
+
+Campaign settings → Leave campaign removes your membership and moves your character out of the active party. Confirm the action in the form. Hosts must first hand off their role. Departure waits until encounters, decisions, and pending actions are resolved; closing the browser remains the normal way to take a temporary break.
+
+A valid invitation lets the same account rejoin and automatically restores its character, level, XP, health, energy, equipment, portrait and notes. Returning characters wait until shared play is clear, and there must be room under the eight-member limit. A free grid position is selected if the old position is occupied. Repeated/concurrent joins do not duplicate characters. An invitation replaced by a host handoff no longer works.
+
+Departure is not data deletion: story history remains, and the saved character stays in the campaign database for a future return. Archived characters and their private notes are omitted from all normal campaign views and exports, including the host’s export; they return to the normal privacy rules on rejoining. Membership changes and character archival/restoration are saved together under a campaign lease and database transaction. Account deletion and permanent campaign erasure are not implemented.

@@ -11,6 +11,8 @@ import {
   rebuildCharacter,
   changeInventory,
   hostHandoff,
+  departCampaign,
+  restoreDepartedCharacter,
   check,
   combat,
   deadline,
@@ -120,22 +122,107 @@ export async function create(user: User, v: Record<string, unknown>) {
   return view(id, user);
 }
 export async function join(user: User, invite: unknown) {
-  const r = await database()
-    .prepare('SELECT id FROM campaigns WHERE invite=?')
+  const row = await database()
+    .prepare('SELECT * FROM campaigns WHERE invite=?')
     .bind(text(invite, 'Invite code', 100))
-    .first<{ id: string }>();
-  if (!r)
+    .first<Row>();
+  if (!row)
     throw new GameError(
       'That invitation is invalid or has been replaced.',
       404,
     );
-  await database()
+  const member = await database()
+    .prepare('SELECT user_id FROM members WHERE campaign_id=? AND user_id=?')
+    .bind(row.id, user.id)
+    .first();
+  if (!member) await changeMembership(user, row, true);
+  return view(row.id, user);
+}
+
+export async function leave(user: User, v: Record<string, unknown>) {
+  const id = text(v.id, 'Campaign', 100);
+  if (v.confirm !== true)
+    throw new GameError('Confirm that you want to leave this campaign.');
+  const row = await database()
     .prepare(
-      'INSERT OR IGNORE INTO members(campaign_id,user_id,name) SELECT ?,?,? WHERE (SELECT COUNT(*) FROM members WHERE campaign_id=?) < 8',
+      'SELECT c.* FROM campaigns c JOIN members m ON m.campaign_id=c.id WHERE c.id=? AND m.user_id=?',
     )
-    .bind(r.id, user.id, user.name, r.id)
+    .bind(id, user.id)
+    .first<Row>();
+  // Repeating a completed departure is harmless and reveals no campaign data.
+  if (!row) return { left: true, id };
+  if (v.version !== row.version)
+    throw new GameError('The campaign changed. Review it before leaving.', 409);
+  await changeMembership(user, row, false);
+  return { left: true, id };
+}
+
+async function changeMembership(user: User, row: Row, joining: boolean) {
+  const db = database(),
+    lock = uid();
+  const acquired = await db
+    .prepare(
+      'UPDATE campaigns SET lock=?,lock_until=? WHERE id=? AND version=? AND (lock IS NULL OR lock_until<?)',
+    )
+    .bind(lock, Date.now() + 90000, row.id, row.version, Date.now())
     .run();
-  return view(r.id, user);
+  if (acquired.meta.changes !== 1)
+    throw new GameError(
+      'The campaign is changing. Try again in a moment.',
+      409,
+    );
+  try {
+    const s = JSON.parse(row.state) as CampaignState;
+    if (joining) {
+      const count = await db
+        .prepare('SELECT COUNT(*) AS count FROM members WHERE campaign_id=?')
+        .bind(row.id)
+        .first<{ count: number }>();
+      if ((count?.count || 0) >= 8)
+        throw new GameError('This campaign already has 8 members.');
+      restoreDepartedCharacter(s, user.id);
+    } else departCampaign(s, user.id, user.name, row.host_id === user.id);
+    const serialized = JSON.stringify(s);
+    if (serialized.length > 800000 || s.events.length > 10000)
+      throw new GameError(
+        'This campaign has reached its storage limit. Export it before continuing.',
+      );
+    const guard =
+      'EXISTS (SELECT 1 FROM campaigns WHERE id=? AND version=? AND lock=?)';
+    const membership = joining
+      ? db
+          .prepare(
+            `INSERT INTO members(campaign_id,user_id,name) SELECT ?,?,? WHERE ${guard}`,
+          )
+          .bind(row.id, user.id, user.name, row.id, row.version, lock)
+      : db
+          .prepare(
+            `DELETE FROM members WHERE campaign_id=? AND user_id=? AND ${guard}`,
+          )
+          .bind(row.id, user.id, row.id, row.version, lock);
+    // Every statement is guarded by the same lease and version; the batch is
+    // transactional on D1 and Railway SQLite, including rollback on errors.
+    const results = await db.batch([
+      membership,
+      db
+        .prepare(
+          'UPDATE campaigns SET state=?,version=version+1,updated_at=?,lock=NULL,lock_until=0 WHERE id=? AND version=? AND lock=?',
+        )
+        .bind(serialized, now(), row.id, row.version, lock),
+    ]);
+    if (results[1].meta.changes !== 1)
+      throw new GameError(
+        'Membership was not changed because another turn won. Please try again.',
+        409,
+      );
+  } finally {
+    await db
+      .prepare(
+        'UPDATE campaigns SET lock=NULL,lock_until=0 WHERE id=? AND lock=?',
+      )
+      .bind(row.id, lock)
+      .run();
+  }
 }
 export async function mutate(user: User, v: Record<string, unknown>) {
   const id = text(v.id, 'Campaign', 100);
