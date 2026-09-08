@@ -76,7 +76,7 @@ MIT-licensed source is published at [joebasrawi/lantern-table](https://github.co
 This is the first playable milestone, not the finished platform. See `docs/PRODUCT.md` for the complete goal and `docs/VERIFICATION.md` for current evidence and verification gaps.
 
 - Semantic recall and archival beyond the current keyword-based history search, richer AI encounter direction, and expanded custom ability effects beyond the two validated templates.
-- Mechanical character respecs, generated portraits, expanded equipment and rule content. Character identity, concept, and preset portrait can already be edited.
+- Generated portraits, expanded equipment and rule content. Character identity, concept, and preset portrait can already be edited.
 - Notifications, simultaneous combat, delegation, co-hosts and host transfers; the Railway deadline processor is already deployed. DM/rule/voting changes are already staged until current play finishes.
 - Broader tactical maps, world map editing, voice/ambience, additional genre artwork.
 - Live verification of self-hosted identity, account lifecycle, provider choice/local models, provider-neutral hosting, cost/billing controls and public release.
@@ -131,3 +131,9 @@ A live API integration test verified draft privacy, unchanged shared state, revi
 The host can upload a landscape JPG, PNG or still WebP in campaign settings, up to 512 KB and 2048 pixels per side. It replaces the default harbor or abstract backdrop, allowing the visual setting to fit a different era. Scene reads check campaign membership and only the host can change or restore the backdrop, even if the host has no player character. Changing artwork does not change location, discoveries, resources or turns. Update the image manually when appropriate; automatic scene generation is not implemented.
 
 Scene and portrait objects share private R2 storage with separate key prefixes. The previous scene URL stops working after removal or replacement. Unreferenced old objects currently remain in storage. Failed upload responses now check the saved state before deleting a new object, so a response failure after a successful save cannot delete the active image.
+
+## Change your character build
+
+In your character’s Abilities tab, open “Change role and attributes.” Choose a role and reassign the six standard scores; picking a score swaps it with the attribute currently using it. The preview shows health and armor after saving. Build changes are available only outside encounters, party decisions, and pending actions, and unconscious characters must recover first.
+
+The server preserves identity, level, XP, earned health/energy capacity, inventory and approved abilities. A role change adjusts base health and armor, and existing combat rules use the new role’s attack attribute and range. It never restores current health or energy. Health above a lower maximum is lost and changing back does not restore it. The change appears in shared campaign history and persists on return. Equipment descriptions are retained; new gear is not granted when switching roles.

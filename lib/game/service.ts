@@ -8,6 +8,7 @@ import {
   reviewAbility,
   removeAbility,
   levelUp,
+  rebuildCharacter,
   check,
   combat,
   deadline,
@@ -218,6 +219,9 @@ export async function mutate(user: User, v: Record<string, unknown>) {
         delete character().portraitAsset;
         break;
       }
+      case 'rebuild':
+        rebuildCharacter(s, user.id, v);
+        break;
       case 'levelUp': {
         levelUp(s, user.id, v.growth);
         break;

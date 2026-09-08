@@ -111,3 +111,13 @@ Railway deployment `08ea0b96-6acc-4d8f-a17a-840b394f51e2` reached SUCCESS with s
 ## Public source release — September 8, 2026
 
 The MIT-licensed source is published at https://github.com/joebasrawi/lantern-table with fresh history. The 167-file export was checked against local committed blobs, excluding intentionally sanitized hosting identity; no account files, database, environment secrets or private Git history were included. Public documentation omits tester names and corrects stale portrait-storage and assisted-browser descriptions. The public commit includes the deployed gameplay and authentication implementation. GitHub Actions runs typecheck, lint, unit tests, both hosting builds and the Railway multiplayer HTTP suite; its first remote result is being verified. Public source availability does not enable public registration or complete the broader product roadmap.
+
+Public commit `320fec25e7553ef04ee2c358f0b1a211f7a4981b` passed GitHub Actions run `34251483529`: frozen installation, typecheck, lint, all 61 unit tests, standalone build, Railway build and password-authenticated multiplayer HTTP verification. The public repository reports PUBLIC visibility and MIT licensing. The public checkout is maintained separately from the private historical checkout to prevent publishing private hosting metadata or old history.
+
+## Character build changes — September 8, 2026
+
+Players can change their role and reassign the standard attribute array through an expandable editor in their own Abilities tab. The server rejects changes during encounters, decisions, pending actions, or unconsciousness. Role changes preserve earned vitality/focus capacity and all other progress; health is clamped to the new maximum without restoring resources. Identity, possessions and approved abilities remain unchanged. Shared history records the new build.
+
+Typecheck, lint, all 65 unit tests, the Railway build and multiplayer HTTP tests passed. Four new unit tests cover preserved progression/injuries, repeated role changes without healing, forged values, invalid budgets, unchanged builds, identity isolation and active-play restrictions. HTTP checks cover own-character enforcement, no-character rejection, ignored forged resources, request retry idempotency, blocked changes during a vote and persistent reload.
+
+A disposable local browser character changed Wayfinder to Arcanist and Intelligence 8 to 15. The editor swapped Charisma 15 to 8 and previewed 16/16 health. After Save build and browser reload, the character showed the new role and scores, 16/16 health, unchanged 3/3 energy, and a saved shared-history event. The expanded desktop editor was visually inspected. No real player character was changed; hosted deployment verification is pending.

@@ -293,6 +293,45 @@ console.log(
   'PASS: profile editing preserves resources, human host can decide without a character, only host can cancel decisions',
 );
 
+const buildBefore = cancelled.data.state.characters[0];
+assert.equal(
+  (
+    await hostPost('local_1', {
+      op: 'rebuild',
+      role: 'Vanguard',
+      stats: buildBefore.stats,
+      characterId: buildBefore.id,
+    })
+  ).status,
+  400,
+);
+const rebuildRequest = {
+  id: hostCampaign.id,
+  version: (await api('local_2', null, `?id=${hostCampaign.id}`)).data.version,
+  requestId: crypto.randomUUID(),
+  op: 'rebuild',
+  role: buildBefore.role === 'Arcanist' ? 'Vanguard' : 'Arcanist',
+  stats: buildBefore.stats,
+  hp: 999,
+  xp: 9999,
+};
+const rebuilt = await api('local_2', rebuildRequest);
+assert.equal(rebuilt.status, 200);
+const buildAfter = rebuilt.data.state.characters[0];
+assert.equal(buildAfter.role, rebuildRequest.role);
+assert.equal(buildAfter.hp, Math.min(buildBefore.hp, buildAfter.maxHp));
+assert.equal(buildAfter.xp, buildBefore.xp);
+assert.deepEqual(buildAfter.inventory, buildBefore.inventory);
+const retryBuild = await api('local_2', rebuildRequest);
+assert.equal(retryBuild.status, 200);
+assert.equal(retryBuild.data.version, rebuilt.data.version);
+const savedBuild = (await api('local_2', null, `?id=${hostCampaign.id}`)).data
+  .state.characters[0];
+assert.deepEqual(savedBuild, buildAfter);
+console.log(
+  'PASS: own-character rebuild, forged resources ignored, idempotent retry and saved build',
+);
+
 const queuedDecision = (
   await hostPost('local_2', {
     op: 'decision',
@@ -300,6 +339,16 @@ const queuedDecision = (
     options: ['Cross', 'Wait'],
   })
 ).data.state.decision;
+assert.equal(
+  (
+    await hostPost('local_2', {
+      op: 'rebuild',
+      role: 'Envoy',
+      stats: buildAfter.stats,
+    })
+  ).status,
+  400,
+);
 const queued = await hostPost('local_1', {
   op: 'settings',
   settings: {

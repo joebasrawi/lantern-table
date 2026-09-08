@@ -42,6 +42,8 @@ import {
   nextLevelXp,
   PRESETS,
   ROLES,
+  roleHealth,
+  roleArmor,
   WORLDS,
   type CampaignView,
   type Character,
@@ -1562,6 +1564,15 @@ function CharacterSheet({
           </p>
         </>
       )}
+      {tab === 'Abilities' && own && (
+        <BuildEditor
+          key={`${c.id}:${c.role}:${JSON.stringify(c.stats)}`}
+          character={c}
+          post={post}
+          busy={busy}
+          blocked={advancementBlocked}
+        />
+      )}
       {tab === 'Profile' && own && (
         <ProfileEditor character={c} post={post} busy={busy} upload={upload} />
       )}
@@ -2474,6 +2485,98 @@ function DMDesk({
         </div>
       </div>
     </div>
+  );
+}
+
+function BuildEditor({
+  character: c,
+  post,
+  busy,
+  blocked,
+}: {
+  character: Character;
+  post: Post;
+  busy: boolean;
+  blocked: boolean;
+}) {
+  const [role, setRole] = useState(c.role);
+  const [stats, setStats] = useState(c.stats);
+  const changed =
+    role !== c.role ||
+    Object.keys(stats).some(
+      (key) => stats[key as keyof Stats] !== c.stats[key as keyof Stats],
+    );
+  const maxHp = c.maxHp - roleHealth(c.role) + roleHealth(role);
+  return (
+    <details>
+      <summary>Change role and attributes</summary>
+      <form
+        onSubmit={async (event) => {
+          event.preventDefault();
+          await post({ op: 'rebuild', role, stats });
+        }}
+      >
+        <fieldset disabled={busy || blocked || c.hp <= 0}>
+          <legend>Character build</legend>
+          <Field label="Role">
+            <select
+              value={role}
+              onChange={(event) => setRole(event.target.value)}
+            >
+              {ROLES.map((value) => (
+                <option key={value}>{value}</option>
+              ))}
+            </select>
+          </Field>
+          <div className="stat-builder">
+            {Object.entries(stats).map(([key, value]) => (
+              <Field key={key} label={key}>
+                <select
+                  value={value}
+                  onChange={(event) => {
+                    const selected = Number(event.target.value);
+                    const other = (Object.keys(stats) as (keyof Stats)[]).find(
+                      (name) => name !== key && stats[name] === selected,
+                    );
+                    setStats({
+                      ...stats,
+                      [key]: selected,
+                      ...(other ? { [other]: value } : {}),
+                    });
+                  }}
+                >
+                  {[15, 14, 13, 12, 10, 8].map((score) => (
+                    <option key={score}>{score}</option>
+                  ))}
+                </select>
+              </Field>
+            ))}
+          </div>
+          <p>
+            After saving: {Math.min(c.hp, maxHp)} / {maxHp} health ·{' '}
+            {roleArmor(role)} armor. Energy stays {c.energy} / {c.maxEnergy}.
+          </p>
+          <p className="muted">
+            Changing a score swaps it with the attribute using that score.
+            Level, experience, equipment, approved abilities, and earned
+            capacity remain yours. Health above the new limit is lost; changing
+            back does not restore it.
+          </p>
+          <button className="primary" disabled={!changed}>
+            Save build
+          </button>
+        </fieldset>
+        {blocked && (
+          <p className="muted">
+            Finish the party’s current encounter, decision, and pending actions
+            first.
+          </p>
+        )}
+        {c.hp <= 0 && (
+          <p className="muted">Recover before changing your build.</p>
+        )}
+      </form>
+    </details>
   );
 }
 

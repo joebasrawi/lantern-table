@@ -3,6 +3,8 @@ import {
   MAX_LEVEL,
   nextLevelXp,
   ROLES,
+  roleHealth,
+  roleArmor,
   type CampaignState,
   type Character,
   type Event,
@@ -123,6 +125,30 @@ export function initialState(
   );
   return s;
 }
+function startingStats(input: unknown): Stats {
+  const defaults: Stats = {
+    strength: 10,
+    dexterity: 12,
+    constitution: 13,
+    intelligence: 8,
+    wisdom: 14,
+    charisma: 15,
+  };
+  const stats = (input ?? defaults) as Stats;
+  const keys = Object.keys(defaults) as (keyof Stats)[];
+  if (
+    keys.some((k) => !Number.isInteger(stats[k])) ||
+    keys
+      .map((k) => stats[k])
+      .sort((a, b) => a - b)
+      .join(',') !== '8,10,12,13,14,15'
+  )
+    throw new GameError(
+      'Assign each starting score once: 15, 14, 13, 12, 10, 8.',
+    );
+  return Object.fromEntries(keys.map((k) => [k, stats[k]])) as Stats;
+}
+
 export function makeCharacter(
   v: Record<string, unknown>,
   userId: string,
@@ -135,27 +161,8 @@ export function makeCharacter(
     !['Human', 'Elf', 'Dwarf', 'Halfling', 'Android'].includes(ancestry)
   )
     throw new GameError('This campaign allows standard species only.');
-  const defaults: Stats = {
-    strength: 10,
-    dexterity: 12,
-    constitution: 13,
-    intelligence: 8,
-    wisdom: 14,
-    charisma: 15,
-  };
-  const stats = (v.stats || defaults) as Stats;
-  const keys = Object.keys(defaults) as (keyof Stats)[];
-  if (
-    keys.some((k) => !Number.isInteger(stats[k])) ||
-    keys
-      .map((k) => stats[k])
-      .sort((a, b) => a - b)
-      .join(',') !== '8,10,12,13,14,15'
-  )
-    throw new GameError(
-      'Assign each starting score once: 15, 14, 13, 12, 10, 8.',
-    );
-  const maxHp = role === 'Vanguard' ? 24 : role === 'Arcanist' ? 16 : 20;
+  const stats = startingStats(v.stats);
+  const maxHp = roleHealth(role);
   const portrait = Number(v.portrait);
   if (!Number.isInteger(portrait) || portrait < 0 || portrait > 3)
     throw new GameError('Choose a portrait.');
@@ -169,10 +176,10 @@ export function makeCharacter(
     portrait,
     hp: maxHp,
     maxHp,
-    armor: role === 'Vanguard' ? 15 : 12,
+    armor: roleArmor(role),
     energy: 3,
     maxEnergy: 3,
-    stats: Object.fromEntries(keys.map((k) => [k, stats[k]])) as Stats,
+    stats,
     inventory: [
       'Travel supplies',
       'Healing kit',
@@ -627,6 +634,51 @@ export function levelUp(s: CampaignState, userId: string, growth: unknown) {
     'system',
     c.name,
     `${c.name} reaches level ${c.level} and gains ${selected === 'vitality' ? '4 maximum health' : '1 maximum energy'}. Rest to fill the increased capacity.`,
+    userId,
+  );
+}
+
+export function rebuildCharacter(
+  s: CampaignState,
+  userId: string,
+  input: Record<string, unknown>,
+) {
+  const c = s.characters.find((character) => character.userId === userId);
+  if (!c) throw new GameError('Create your character first.');
+  if (s.encounter || s.decision || s.pending.length)
+    throw new GameError(
+      'Finish the current encounter, decision, and pending actions before changing your build.',
+    );
+  if (c.hp <= 0) throw new GameError('Recover before changing your build.');
+  const role = choice(input.role, ROLES, 'role');
+  if (!input.stats)
+    throw new GameError('Assign your attributes before saving.');
+  const stats = startingStats(input.stats);
+  if (
+    role === c.role &&
+    Object.keys(stats).every(
+      (key) => stats[key as keyof Stats] === c.stats[key as keyof Stats],
+    )
+  )
+    throw new GameError(
+      'Choose a different role or attribute assignment first.',
+    );
+  // Keep earned vitality capacity; changing roles never fills health or energy.
+  const maxHp = c.maxHp - roleHealth(c.role) + roleHealth(role);
+  c.hp = Math.min(c.hp, maxHp);
+  c.maxHp = maxHp;
+  c.armor = roleArmor(role);
+  c.role = role;
+  c.stats = stats;
+  addEvent(
+    s,
+    'system',
+    c.name,
+    `${c.name} changed their build to ${role}. Attributes: ${Object.entries(
+      stats,
+    )
+      .map(([key, score]) => `${key} ${score}`)
+      .join(', ')}. Health and energy were not restored.`,
     userId,
   );
 }

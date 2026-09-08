@@ -155,6 +155,9 @@ export const DEFAULT_SETTINGS: Settings = {
   tone: 'Adventurous',
   boundaries: '',
 };
+export const roleHealth = (role: string) =>
+  role === 'Vanguard' ? 24 : role === 'Arcanist' ? 16 : 20;
+export const roleArmor = (role: string) => (role === 'Vanguard' ? 15 : 12);
 export const ROLES = ['Vanguard', 'Wayfinder', 'Arcanist', 'Envoy'];
 export const PRESETS = [
   {
