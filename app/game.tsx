@@ -910,6 +910,8 @@ export default function Game() {
                   campaign.state.pending.length
                 )
               }
+              campaignId={campaign.id}
+              generationEnabled={!!campaign.portraitGenerationEnabled}
               party={campaign.state.characters}
               host={!!host}
               customAllowed={campaign.state.settings.customization === 'custom'}
@@ -1540,6 +1542,8 @@ function CharacterBuilder({
   );
 }
 function CharacterSheet({
+  campaignId,
+  generationEnabled,
   party,
   host,
   customAllowed,
@@ -1550,6 +1554,8 @@ function CharacterSheet({
   post,
   busy,
 }: {
+  campaignId: string;
+  generationEnabled: boolean;
   party: Character[];
   host: boolean;
   upload: (file: File) => Promise<boolean>;
@@ -1686,7 +1692,14 @@ function CharacterSheet({
         />
       )}
       {tab === 'Profile' && own && (
-        <ProfileEditor character={c} post={post} busy={busy} upload={upload} />
+        <ProfileEditor
+          character={c}
+          post={post}
+          busy={busy}
+          upload={upload}
+          campaignId={campaignId}
+          generationEnabled={generationEnabled}
+        />
       )}
       {tab === 'Inventory' && (
         <InventoryEditor
@@ -2827,11 +2840,15 @@ function BuildEditor({
 }
 
 function ProfileEditor({
+  campaignId,
+  generationEnabled,
   upload,
   character: c,
   post,
   busy,
 }: {
+  campaignId: string;
+  generationEnabled: boolean;
   upload: (file: File) => Promise<boolean>;
   character: Character;
   post: Post;
@@ -2925,6 +2942,18 @@ function ProfileEditor({
         >
           Use this artwork
         </button>
+      )}
+      {generationEnabled && (
+        <GeneratedPortrait
+          campaignId={campaignId}
+          upload={upload}
+          busy={busy}
+          profileDirty={
+            name.trim() !== c.name ||
+            ancestry.trim() !== c.ancestry ||
+            concept.trim() !== c.concept
+          }
+        />
       )}
       {c.portraitAsset && (
         <button
@@ -3473,6 +3502,125 @@ function LeaveCampaign({
           </label>
           <button disabled={busy || !confirmed}>Leave campaign</button>
         </form>
+      )}
+    </details>
+  );
+}
+
+function GeneratedPortrait({
+  campaignId,
+  upload,
+  busy,
+  profileDirty,
+}: {
+  campaignId: string;
+  upload: (file: File) => Promise<boolean>;
+  busy: boolean;
+  profileDirty: boolean;
+}) {
+  const [generating, setGenerating] = useState(false);
+  const [preview, setPreview] = useState<{ url: string; file: File } | null>(
+    null,
+  );
+  const [error, setError] = useState('');
+  const alive = useRef(true),
+    controller = useRef<AbortController | null>(null),
+    previewUrl = useRef('');
+  useEffect(() => {
+    alive.current = true;
+    return () => {
+      alive.current = false;
+      controller.current?.abort();
+      if (previewUrl.current) URL.revokeObjectURL(previewUrl.current);
+    };
+  }, []);
+  async function generate() {
+    if (generating || busy || profileDirty) return;
+    setGenerating(true);
+    setError('');
+    controller.current = new AbortController();
+    try {
+      const response = await fetch(
+        `/api/portrait/generate?campaign=${encodeURIComponent(campaignId)}`,
+        { method: 'POST', signal: controller.current.signal },
+      );
+      if (!response.ok) {
+        const body = (await response.json()) as { error?: string };
+        throw new Error(body.error || 'Portrait generation failed.');
+      }
+      const blob = await response.blob();
+      if (!alive.current) return;
+      if (previewUrl.current) URL.revokeObjectURL(previewUrl.current);
+      const url = URL.createObjectURL(blob);
+      previewUrl.current = url;
+      setPreview({
+        url,
+        file: new File([blob], 'generated-portrait.jpg', {
+          type: 'image/jpeg',
+        }),
+      });
+    } catch (e) {
+      if (alive.current) setError((e as Error).message);
+    } finally {
+      if (alive.current) setGenerating(false);
+    }
+  }
+  return (
+    <details>
+      <summary>Generate character artwork</summary>
+      <p className="muted">
+        Create a portrait from your saved appearance, character type, and world.
+        Your current artwork stays until you choose to use the preview.
+        Generation uses the server’s separate image allowance.
+      </p>
+      {profileDirty && <p>Save your profile changes first.</p>}
+      <button
+        type="button"
+        disabled={busy || generating || profileDirty}
+        onClick={generate}
+      >
+        {generating ? 'Creating portrait…' : 'Generate preview'}
+      </button>
+      {generating && (
+        <p>
+          <output>
+            Keep this panel open while the portrait is created. Other players
+            can keep playing.
+          </output>
+        </p>
+      )}
+      {error && <p role="alert">{error}</p>}
+      {preview && (
+        <>
+          <img
+            src={preview.url}
+            alt="Generated character portrait preview"
+            width={256}
+            height={256}
+            style={{
+              maxWidth: '100%',
+              height: 'auto',
+              display: 'block',
+              marginTop: 16,
+            }}
+          />
+          <p className="muted">
+            Preview only. It is not saved until you use it.
+          </p>
+          <button
+            type="button"
+            disabled={busy || generating}
+            onClick={async () => {
+              if (await upload(preview.file)) {
+                URL.revokeObjectURL(preview.url);
+                previewUrl.current = '';
+                setPreview(null);
+              }
+            }}
+          >
+            Use generated portrait
+          </button>
+        </>
       )}
     </details>
   );

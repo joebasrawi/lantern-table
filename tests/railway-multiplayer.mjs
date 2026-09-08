@@ -47,6 +47,8 @@ try {
         LANTERN_BACKGROUND_TURNS: 'false',
         OPENAI_API_KEY: 'test-placeholder-not-a-key',
         LANTERN_AI_DAILY_LIMIT: '0',
+        LANTERN_PORTRAITS_ENABLED: 'true',
+        LANTERN_PORTRAIT_DAILY_LIMIT: '0',
       },
       stdio: ['ignore', 'ignore', 'inherit'],
     },
@@ -76,6 +78,7 @@ try {
       TEST_ORIGIN: origin,
       TEST_ACCOUNTS_FILE: accountFile,
       TEST_AI_PAUSED: 'true',
+      TEST_PORTRAIT_PAUSED: 'true',
     },
     stdio: 'inherit',
   });

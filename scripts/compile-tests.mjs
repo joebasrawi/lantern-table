@@ -4,6 +4,7 @@ mkdirSync('.test-build', { recursive: true });
 for (const name of [
   'types',
   'ai-usage',
+  'portrait-generation',
   'attention',
   'engine',
   'dm-output',
@@ -20,7 +21,10 @@ for (const name of [
         module: ts.ModuleKind.ESNext,
       },
     })
-    .outputText.replace(/from '\.\/(types|engine|context)'/g, "from './$1.js'");
+    .outputText.replace(
+      /from '\.\/(types|engine|context|portrait)'/g,
+      "from './$1.js'",
+    );
   writeFileSync(`.test-build/${name}.js`, code);
 }
 

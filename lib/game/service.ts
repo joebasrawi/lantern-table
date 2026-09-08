@@ -1,3 +1,10 @@
+import { env } from 'cloudflare:workers';
+import {
+  generatePortraitImage,
+  portraitPrompt,
+  reservePortrait,
+  imageDailyLimit,
+} from './portrait-generation';
 import { database } from '../../db';
 import { portraits } from '../portraits';
 import { inspectPortrait } from './portrait';
@@ -89,6 +96,8 @@ export async function view(id: string, user: User): Promise<CampaignView> {
     .bind(id)
     .all<{ userId: string; name: string }>();
   return {
+    portraitGenerationEnabled:
+      env.LANTERN_PORTRAITS_ENABLED === 'true' && !!env.OPENAI_API_KEY,
     id: row.id,
     hostId: row.host_id,
     version: row.version,
@@ -780,5 +789,40 @@ async function cleanupUnusedImage(
     if (!referenced) await portraits().delete(key);
   } catch {
     /* Preserve the object when current state cannot be verified. */
+  }
+}
+
+export async function generateCharacterPortrait(user: User, id: string) {
+  const row = await rowFor(id, user);
+  const s = JSON.parse(row.state) as CampaignState;
+  const c = s.characters.find((c) => c.userId === user.id);
+  if (!c)
+    throw new GameError('Create your character before generating a portrait.');
+  if (env.LANTERN_PORTRAITS_ENABLED !== 'true' || !env.OPENAI_API_KEY)
+    throw new GameError(
+      'Portrait generation is not enabled on this server. You can choose a preset or upload artwork.',
+      503,
+    );
+  const release = await reservePortrait(
+    database(),
+    user.id,
+    imageDailyLimit(env.LANTERN_PORTRAIT_DAILY_LIMIT),
+  );
+  try {
+    const data = await generatePortraitImage(
+      env.OPENAI_API_KEY,
+      env.OPENAI_IMAGE_MODEL || 'gpt-image-1-mini',
+      portraitPrompt(c, s.setting),
+    );
+    const current = JSON.parse((await rowFor(id, user)).state) as CampaignState;
+    if (
+      !current.characters.some(
+        (character) => character.id === c.id && character.userId === user.id,
+      )
+    )
+      throw new GameError('This character is no longer active.', 409);
+    return data;
+  } finally {
+    await release();
   }
 }

@@ -76,7 +76,7 @@ MIT-licensed source is published at [joebasrawi/lantern-table](https://github.co
 This is the first playable milestone, not the finished platform. See `docs/PRODUCT.md` for the complete goal and `docs/VERIFICATION.md` for current evidence and verification gaps.
 
 - Semantic recall and archival beyond the current keyword-based history search, richer AI encounter direction, and expanded custom ability effects beyond the two validated templates.
-- Generated portraits, expanded equipment and rule content. Character identity, concept, and preset portrait can already be edited.
+- Expanded equipment mechanics and rule content. Generated character portrait previews are available when enabled by the server owner. Character identity, concept, and preset portrait can already be edited.
 - Notifications, simultaneous combat, delegation, co-hosts and host transfers; the Railway deadline processor is already deployed. DM/rule/voting changes are already staged until current play finishes.
 - Broader tactical maps, world map editing, voice/ambience, additional genre artwork.
 - Live verification of self-hosted identity, account lifecycle, provider choice/local models, provider-neutral hosting, cost/billing controls and public release.
@@ -189,3 +189,12 @@ Campaign settings → Leave campaign removes your membership and moves your char
 A valid invitation lets the same account rejoin and automatically restores its character, level, XP, health, energy, equipment, portrait and notes. Returning characters wait until shared play is clear, and there must be room under the eight-member limit. A free grid position is selected if the old position is occupied. Repeated/concurrent joins do not duplicate characters. An invitation replaced by a host handoff no longer works.
 
 Departure is not data deletion: story history remains, and the saved character stays in the campaign database for a future return. Archived characters and their private notes are omitted from all normal campaign views and exports, including the host’s export; they return to the normal privacy rules on rejoining. Membership changes and character archival/restoration are saved together under a campaign lease and database transaction. Account deletion and permanent campaign erasure are not implemented.
+
+
+### Generated character portraits
+
+Character → Profile → Generate character artwork creates a preview from the saved name, type, role, appearance/story and campaign setting. Save profile edits first. Personal notes, DM notes, party chat and story history are not sent for portrait generation. Choose Use generated portrait to upload the preview into the existing private portrait store. Generation alone does not replace artwork or change the character. The preview is temporary browser data and is lost when the panel closes. Keep the panel open while generating; other players can continue their turns.
+
+The server owner enables this with `LANTERN_PORTRAITS_ENABLED=true` and an authorized `OPENAI_API_KEY`. `LANTERN_PORTRAIT_DAILY_LIMIT` defaults to 10 requests per UTC day across the database; 0 pauses generation. It is separate from the dungeon-master request allowance. Failed/discarded generations still count because provider work may be billable. Persistent per-account leases prevent overlapping requests; requests time out after 90 seconds and leases expire after two minutes. This is a count limit, not a dollar budget. A lost response is not resumable and a new attempt can incur another request.
+
+`OPENAI_IMAGE_MODEL` defaults to `gpt-image-1-mini`; the implementation requests one 1024×1024 medium-quality JPEG with compression 65 and rejects images over the existing 512 KB limit. This follows the [OpenAI image-generation API](https://developers.openai.com/api/docs/guides/image-generation) and uses the [GPT Image 1 Mini model](https://developers.openai.com/api/docs/models/gpt-image-1-mini). Other configured models must support those parameters. Generation is disabled by default in the open-source configuration. Generated scene artwork and queued background image jobs are not implemented.

@@ -147,6 +147,7 @@ export type CampaignState = {
   seen: Record<string, string>;
 };
 export type CampaignView = {
+  portraitGenerationEnabled?: boolean;
   id: string;
   hostId: string;
   version: number;

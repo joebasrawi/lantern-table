@@ -90,6 +90,28 @@ assert.equal(
   (await post('local_2', { op: 'settings', settings: opts })).status,
   403,
 );
+if (process.env.TEST_PORTRAIT_PAUSED === 'true') {
+  const portraitCall = async (cookie, origin = base) =>
+    fetch(`${base}/api/portrait/generate?campaign=${id}`, {
+      method: 'POST',
+      headers: { Origin: origin, ...(cookie ? { Cookie: cookie } : {}) },
+    });
+  assert.equal((await portraitCall(null)).status, 401);
+  assert.equal(
+    (await portraitCall(cookies.local_1, 'https://foreign.example')).status,
+    403,
+  );
+  assert.equal((await portraitCall(cookies.local_3)).status, 404);
+  const before = (await get('local_1')).state;
+  const response = await portraitCall(cookies.local_1);
+  assert.equal(response.status, 429);
+  assert.match((await response.json()).error, /paused/);
+  assert.deepEqual((await get('local_1')).state, before);
+  console.log(
+    'PASS: portrait generation authentication, membership, origin and paused-allowance checks preserve campaign state',
+  );
+}
+
 const gearCharacters = (await get('local_1')).state.characters;
 const gearHost = gearCharacters.find(
   (c) => c.userId === (identities.local_1 || 'local_1'),
