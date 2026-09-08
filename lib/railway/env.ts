@@ -5,6 +5,9 @@ export const env = {
   get OPENAI_API_KEY() {
     return process.env.OPENAI_API_KEY;
   },
+  get LANTERN_AI_DAILY_LIMIT() {
+    return process.env.LANTERN_AI_DAILY_LIMIT;
+  },
   get OPENAI_MODEL() {
     return process.env.OPENAI_MODEL;
   },

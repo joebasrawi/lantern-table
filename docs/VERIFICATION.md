@@ -190,3 +190,10 @@ Custom-enemy deployment `b23e801e-7b74-4d4c-9682-bf492122c82a` reached SUCCESS. 
 ### Scoped stylesheet generation
 
 Restricted Tailwind source discovery to the application directory, excluding unused generated components. Production build passed. CSS decreased from 147,096 to 21,820 raw bytes (85.2%); local gzip decreased from 24,864 to 5,760 bytes. These are asset sizes, not measured page-speed improvements. Browser checks against the production build confirmed campaign list, Adventure, tactical grid, selected enemy controls, and character dialog rendering. No gameplay behavior changed.
+
+Deployment verification: Railway `0be883a0-a0e9-4a1e-8ade-cd07411c6098` succeeded for public source `630f87426a05bb70cb74cc994fd95a5b483e9458`. GitHub Actions run `34267255646` passed all checks. Live CSS `/_next/static/css/index.BLPn0rAg.css` is 21,820 bytes, versus the previous live 147,096 bytes. Live font integration passed both preloads and all 12 font assets. Saved-campaign regression passed login, character/campaign persistence, exact private portrait bytes, origin protection, local-auth rejection, and logout. Disposable browser-test server stopped.
+
+
+### Persistent server-wide AI allowance
+
+Added a default 100-request UTC-day allowance shared by AI and assisted narration, configurable through LANTERN_AI_DAILY_LIMIT (0 pauses). SQLite-backed unit checks prove competing reservations cannot exceed a cap, persistence across a fresh process, safe allowance changes, invalid configuration rejection, and rollover without resetting on an older timestamp. All 78 unit tests, typecheck, lint and Railway build passed. Multiplayer HTTP checks with a placeholder key and AI paused verify 429 and exact unchanged campaign state/version after a rolled action; existing human-DM and multiplayer checks pass. No paid provider call was needed. The first HTTP fixture used an invalid attribute name; correcting it to intelligence exercised the intended path successfully. This is a request-count safeguard, not comprehensive billing/token accounting.

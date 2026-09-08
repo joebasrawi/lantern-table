@@ -45,7 +45,8 @@ try {
         LANTERN_ORIGIN: origin,
         LANTERN_ACCOUNTS: JSON.stringify(accounts),
         LANTERN_BACKGROUND_TURNS: 'false',
-        OPENAI_API_KEY: '',
+        OPENAI_API_KEY: 'test-placeholder-not-a-key',
+        LANTERN_AI_DAILY_LIMIT: '0',
       },
       stdio: ['ignore', 'ignore', 'inherit'],
     },
@@ -74,6 +75,7 @@ try {
       ...process.env,
       TEST_ORIGIN: origin,
       TEST_ACCOUNTS_FILE: accountFile,
+      TEST_AI_PAUSED: 'true',
     },
     stdio: 'inherit',
   });

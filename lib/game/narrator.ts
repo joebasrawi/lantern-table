@@ -1,3 +1,5 @@
+import { database } from '../../db';
+import { dailyAILimit, reserveAIRequest } from './ai-usage';
 import { env } from 'cloudflare:workers';
 import { GameError } from './engine';
 import { narrationContext } from './context';
@@ -15,6 +17,12 @@ export async function narrate(
       503,
     );
   const context = narrationContext(s, action);
+  await reserveAIRequest(
+    database(),
+    dailyAILimit(
+      env.LANTERN_AI_DAILY_LIMIT || process.env.LANTERN_AI_DAILY_LIMIT,
+    ),
+  );
   const response = await fetch('https://api.openai.com/v1/responses', {
     method: 'POST',
     headers: {

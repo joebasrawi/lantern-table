@@ -6,5 +6,6 @@ declare namespace Cloudflare {
     PORTRAITS: R2Bucket;
     OPENAI_API_KEY?: string;
     OPENAI_MODEL?: string;
+    LANTERN_AI_DAILY_LIMIT?: string;
   }
 }

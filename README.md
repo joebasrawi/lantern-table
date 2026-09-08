@@ -155,3 +155,12 @@ A human or assisted DM can create a campaign and begin guiding it without making
 In DM Desk → Run an encounter, expand Enemy combat values. Hosts can set health (1–500), armor (1–30), attack bonus (−5 to +15), and damage per hit (1–50). Values apply to every enemy in that encounter and cannot be edited during combat. Use standard values restores 12 health, 12 armor, +3 attack and 4 damage. Selected targets show their combat values to the party.
 
 AI-proposed encounters retain the standard values. Existing saved enemies without the new fields use the original +3 attack and 4 damage. Victory still awards 25 XP per character; custom difficulty is not automatically balanced or scored. Enemy target selection and movement remain the existing simple automation.
+
+
+### Server-wide AI allowance
+
+`LANTERN_AI_DAILY_LIMIT` caps AI provider requests across all campaigns sharing a database. The default is 100 requests per UTC calendar day; set 0 to pause AI calls or a nonnegative whole number to change the allowance. Invalid configuration prevents AI requests. This applies to AI turns and assisted-DM generation, in addition to existing campaign throttles. Human-DM actions do not consume it.
+
+Each request reserves a slot atomically in persistent storage before contacting the provider. Failed, interrupted, or unparseable replies still count, because provider work may already have occurred. Restarting does not reset the counter. Increasing the setting can allow more requests that day; decreasing it below usage stops further requests. Reaching the limit returns an error without saving the attempted game turn or spending character resources.
+
+This is a request-count safeguard, not a dollar budget, billing system, token ledger, or per-player quota. It does not cover API use outside this installation. There is no player-facing usage dashboard yet. The database creates the single-row allowance table on first use; retain the persistent database when redeploying.

@@ -465,6 +465,26 @@ console.log(
   'PASS: scheduling edits apply during a decision, rule handoff waits and persists after resolution',
 );
 
+if (process.env.TEST_AI_PAUSED === 'true') {
+  const beforeLimit = (await api('local_2', null, `?id=${hostCampaign.id}`))
+    .data;
+  const denied = await hostPost('local_2', {
+    op: 'action',
+    text: 'I inspect the station',
+    roll: true,
+    skill: 'intelligence',
+  });
+  assert.equal(denied.status, 429);
+  assert.match(denied.data.error, /paused by the server owner/);
+  const afterLimit = (await api('local_2', null, `?id=${hostCampaign.id}`))
+    .data;
+  assert.equal(afterLimit.version, beforeLimit.version);
+  assert.deepEqual(afterLimit.state, beforeLimit.state);
+  console.log(
+    'PASS: paused AI rejects before provider access and preserves saved turn, history and resources',
+  );
+}
+
 const enemyStats = { hp: 37, armor: 17, attackBonus: 6, damage: 9 };
 assert.equal(
   (
