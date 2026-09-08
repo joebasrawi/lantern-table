@@ -63,6 +63,12 @@ try {
     await new Promise((resolve) => setTimeout(resolve, 200));
   }
   if (!ready) throw new Error('Test server did not become healthy');
+  const fonts = spawn(process.execPath, ['tests/font-integration.mjs'], {
+    env: { ...process.env, TEST_ORIGIN: origin },
+    stdio: 'inherit',
+  });
+  const [fontCode] = await once(fonts, 'exit');
+  if (fontCode !== 0) throw new Error('Font asset verification failed');
   const test = spawn(process.execPath, ['tests/integration.mjs'], {
     env: {
       ...process.env,

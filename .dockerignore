@@ -8,3 +8,6 @@ dist
 .env*
 .dev.vars*
 wrangler.standalone.json
+
+# Font caches contain absolute paths from the machine that built them.
+.vinext
