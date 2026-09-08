@@ -81,7 +81,7 @@ This is the first playable milestone, not the finished platform. See `docs/PRODU
 - Expanded equipment mechanics and rule content. Generated character portrait previews are available when enabled by the server owner. Character identity, concept, and preset portrait can already be edited.
 - Notifications, simultaneous combat, delegation, and co-hosts; accepted host handoff and character-preserving campaign departure are implemented. The Railway deadline processor is already deployed. DM/rule/voting changes are already staged until current play finishes.
 - Broader tactical maps, world map editing, voice/ambience, additional genre artwork.
-- Live verification of self-hosted identity, account deletion, provider choice/local models, broader cost/billing controls and public onboarding. Persistent AI/image request allowances are implemented; they are not dollar budgets.
+- Live verification of self-hosted identity, provider choice/local models, broader cost/billing controls and public onboarding. Persistent AI/image request allowances are implemented; they are not dollar budgets.
 - Multi-device browser and accessibility testing before claiming release readiness.
 
 ## Artwork
@@ -216,4 +216,15 @@ Generation returns a temporary preview. The host chooses Use generated scene to 
 
 ## Account sessions
 
-On Railway, Account in the adventure list opens password and session controls. The page counts other unexpired browser sign-ins without exposing session identifiers. Enter the current password to sign out every other session while keeping this browser signed in. Origin checks, bounded request bodies and existing password-attempt throttles apply. The current session and password are rechecked inside the revocation transaction. This does not change campaign membership, character data, passwords or other players’ accounts. Session counts are not device counts, and revocation does not prevent a later sign-in with a valid password; change the password if necessary. Individual session/device labels and account deletion remain unfinished.
+On Railway, Account in the adventure list opens password and session controls. The page counts other unexpired browser sign-ins without exposing session identifiers. Enter the current password to sign out every other session while keeping this browser signed in. Origin checks, bounded request bodies and existing password-attempt throttles apply. The current session and password are rechecked inside the revocation transaction. This does not change campaign membership, character data, passwords or other players’ accounts. Session counts are not device counts, and revocation does not prevent a later sign-in with a valid password; change the password if necessary. Individual session/device labels remain unfinished.
+
+
+## Account deletion on Railway
+
+Account → Delete account requires the current password and typing DELETE. Leave shared campaigns first; hosts must hand off hosting before leaving. The confirmation lists how many campaigns have only the account as a member; those campaigns, their history and artwork are also deleted. A changed membership list invalidates the confirmation. Busy affected campaigns defer deletion until their current update finishes.
+
+Deletion transactionally removes the account, all sessions, password-reset and pending registration records, archived characters/private notes and read markers, plus solo campaigns. Contributions in remaining campaigns (story text, author names and shared scene artwork) remain for other players. The same email can later register a new identity when registration is enabled; old characters and memberships do not return.
+
+Private artwork identified by owner metadata or saved archived portrait references is cleaned up after the database transaction. Failed cleanup stays queued and is retried by the Railway background worker, even when timed combat is disabled. Shared artwork still referenced by another campaign is preserved. Uploads already running when an account is deleted cannot recreate its private files. Older unreferenced files without owner metadata require operator cleanup; unrelated backups and deployment settings are managed separately.
+
+A minimal deleted-ID record prevents `LANTERN_ACCOUNTS` from recreating the old identity after restart, and database guards reject late campaign/member inserts for that ID. Keep these records when backing up/restoring the database. Operators should also remove obsolete provisioning entries from deployment settings; deleting an account does not edit Railway configuration or erase external backups. These controls apply to Railway password accounts; Cloudflare Access identity lifecycle is managed by its identity provider.

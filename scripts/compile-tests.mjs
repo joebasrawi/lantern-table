@@ -40,7 +40,13 @@ writeFileSync(
 );
 
 mkdirSync('.test-build/railway', { recursive: true });
-for (const name of ['storage', 'auth', 'recovery', 'signup']) {
+for (const name of [
+  'storage',
+  'auth',
+  'recovery',
+  'signup',
+  'account-deletion',
+]) {
   writeFileSync(
     `.test-build/railway/${name}.js`,
     ts
@@ -52,7 +58,8 @@ for (const name of ['storage', 'auth', 'recovery', 'signup']) {
       })
       .outputText.replace("from './storage'", "from './storage.js'")
       .replace("from './recovery'", "from './recovery.js'")
-      .replace("from './signup'", "from './signup.js'"),
+      .replace("from './signup'", "from './signup.js'")
+      .replace("from './account-deletion'", "from './account-deletion.js'"),
   );
 }
 

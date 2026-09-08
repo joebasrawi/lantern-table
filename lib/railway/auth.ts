@@ -1,3 +1,11 @@
+import {
+  deletionTables,
+  deletionMemberships,
+  deletionFingerprint,
+  deleteAccount,
+  cleanupDeletedImages,
+  DeletionError,
+} from './account-deletion';
 import { signupGet, signupPost, signupEnabled } from './signup';
 import { recoveryGet, recoveryPost } from './recovery';
 import {
@@ -19,6 +27,7 @@ function authDb() {
     db.exec(`CREATE TABLE IF NOT EXISTS accounts(id TEXT PRIMARY KEY,email TEXT NOT NULL UNIQUE,name TEXT NOT NULL,salt TEXT NOT NULL,password_hash TEXT NOT NULL);
       CREATE TABLE IF NOT EXISTS sessions(token_hash TEXT PRIMARY KEY,user_id TEXT NOT NULL REFERENCES accounts(id),expires INTEGER NOT NULL);
       CREATE TABLE IF NOT EXISTS login_attempts(email TEXT PRIMARY KEY,attempts INTEGER NOT NULL,expires INTEGER NOT NULL);`);
+    deletionTables(db);
     const accounts = JSON.parse(process.env.LANTERN_ACCOUNTS || '[]') as {
       id: string;
       email: string;
@@ -27,6 +36,8 @@ function authDb() {
       passwordHash: string;
     }[];
     for (const a of accounts) {
+      if (db.prepare('SELECT id FROM deleted_accounts WHERE id=?').get(a.id))
+        continue;
       if (
         !a.id ||
         !a.email ||
@@ -91,7 +102,28 @@ function accountPage(userId: string, token: string, error = '', status = 200) {
       .get(userId, hash(token), Date.now())?.count || 0,
   );
   return new Response(
-    `<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Account · Lantern Table</title><style>${authStyle}</style><main><a href="/">Back to adventures</a><h1>Your account</h1><p><a href="/api/auth?password">Change password</a></p><h2>Signed-in sessions</h2><p>This browser is signed in. ${others ? `You have ${others} other signed-in ${others === 1 ? 'session' : 'sessions'}.` : 'No other sessions are signed in.'}</p><p>A session is a browser sign-in, not necessarily a separate device. Closing other sessions keeps this browser signed in and preserves your campaigns.</p>${error ? `<p class="error" role="alert">${error}</p>` : ''}${others ? '<form method="post" action="/api/auth?sessions"><label for="password">Current password</label><input id="password" name="password" type="password" required autocomplete="current-password" maxlength="200"><button>Sign out other sessions</button></form>' : ''}<p><a href="/api/auth?logout">Sign out of this browser</a></p></main></html>`,
+    `<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Account · Lantern Table</title><style>${authStyle}</style><main><a href="/">Back to adventures</a><h1>Your account</h1><p><a href="/api/auth?password">Change password</a></p><h2>Signed-in sessions</h2><p>This browser is signed in. ${others ? `You have ${others} other signed-in ${others === 1 ? 'session' : 'sessions'}.` : 'No other sessions are signed in.'}</p><p>A session is a browser sign-in, not necessarily a separate device. Closing other sessions keeps this browser signed in and preserves your campaigns.</p>${error ? `<p class="error" role="alert">${error}</p>` : ''}${others ? '<form method="post" action="/api/auth?sessions"><label for="password">Current password</label><input id="password" name="password" type="password" required autocomplete="current-password" maxlength="200"><button>Sign out other sessions</button></form>' : ''}<p><a href="/api/auth?logout">Sign out of this browser</a></p><p><a href="/api/auth?delete">Delete account</a></p></main></html>`,
+    {
+      status,
+      headers: {
+        'Content-Type': 'text/html; charset=utf-8',
+        'Cache-Control': 'no-store',
+        'Content-Security-Policy':
+          "default-src 'none'; style-src 'unsafe-inline'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'",
+      },
+    },
+  );
+}
+function deletionPage(userId: string, error = '', status = 200) {
+  const memberships = deletionMemberships(authDb(), userId);
+  const blocked = memberships.some(
+    (m) => m.host_id !== userId || Number(m.members) !== 1,
+  );
+  const body = blocked
+    ? '<p>Leave shared campaigns first. If you host one, hand hosting to another member before leaving.</p><p><a href="/">Go to your adventures</a></p>'
+    : `<p>This permanently removes your account, sign-ins and archived characters. ${memberships.length ? `It also deletes ${memberships.length} ${memberships.length === 1 ? 'campaign where you are' : 'campaigns where you are'} the only member, including all history and artwork in those campaigns.` : ''}</p><p>Story contributions and shared artwork in other players’ campaigns remain. You cannot restore this account or its characters by registering again.</p><form method="post" action="/api/auth?delete"><input type="hidden" name="campaigns" value="${deletionFingerprint(memberships)}"><label for="password">Current password</label><input id="password" name="password" type="password" required autocomplete="current-password" maxlength="200"><label for="confirm">Type DELETE to confirm</label><input id="confirm" name="confirm" required pattern="DELETE" autocomplete="off"><button>Delete my account permanently</button></form>`;
+  return new Response(
+    `<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Delete account · Lantern Table</title><style>${authStyle}</style><main><a href="/api/auth?account">Back to account</a><h1>Delete account</h1>${error ? `<p role="alert" class="error">${error}</p>` : ''}${body}</main></html>`,
     {
       status,
       headers: {
@@ -105,7 +137,7 @@ function accountPage(userId: string, token: string, error = '', status = 200) {
 }
 export async function authGet(request: Request) {
   const params = new URL(request.url).searchParams;
-  if (params.has('account')) {
+  if (params.has('account') || params.has('delete')) {
     const token = sessionToken(request);
     const user = await railwayUser(token);
     if (!user || !token)
@@ -113,7 +145,9 @@ export async function authGet(request: Request) {
         status: 303,
         headers: { Location: '/api/auth', 'Cache-Control': 'no-store' },
       });
-    return accountPage(user.id, token);
+    return params.has('delete')
+      ? deletionPage(user.id)
+      : accountPage(user.id, token);
   }
   if (params.has('signup') || params.has('verify')) return signupGet(request);
   if (params.has('forgot') || params.has('reset')) return recoveryGet(request);
@@ -142,6 +176,18 @@ export async function authGet(request: Request) {
       },
     });
   }
+  if (params.has('deleted'))
+    return new Response(
+      `<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Account deleted · Lantern Table</title><style>${authStyle}</style><main><h1>Account deleted</h1><p>Your account has been deleted and all its sessions are signed out.</p><p><a href="/">Back to Lantern Table</a></p></main></html>`,
+      {
+        headers: {
+          'Content-Type': 'text/html; charset=utf-8',
+          'Cache-Control': 'no-store',
+          'Content-Security-Policy':
+            "default-src 'none'; style-src 'unsafe-inline'; frame-ancestors 'none'; base-uri 'none'",
+        },
+      },
+    );
   return page(
     new URL(request.url).searchParams.has('changed')
       ? 'Password changed. Sign in with your new password.'
@@ -177,7 +223,8 @@ export async function authPost(request: Request) {
     return recoveryPost(authDb(), request, raw);
   const change = params.has('password');
   const revoke = params.has('sessions');
-  const protectedAction = change || revoke;
+  const remove = params.has('delete');
+  const protectedAction = change || revoke || remove;
   const user = protectedAction
     ? await railwayUser(sessionToken(request))
     : null;
@@ -193,9 +240,13 @@ export async function authPost(request: Request) {
       : (form.get('email') || '').trim().toLowerCase(),
     password = form.get('password') || '';
   const respond = (message: string, status: number) =>
-    revoke
-      ? accountPage(user!.id, sessionToken(request)!, message, status)
-      : page(message, status, change);
+    remove
+      ? deletionPage(user!.id, message, status)
+      : revoke
+        ? accountPage(user!.id, sessionToken(request)!, message, status)
+        : page(message, status, change);
+  if (remove && form.get('confirm') !== 'DELETE')
+    return respond('Type DELETE to confirm account deletion.', 400);
   const newPassword = form.get('newPassword') || '';
   if (
     change &&
@@ -238,6 +289,33 @@ export async function authPost(request: Request) {
     !timingSafeEqual(derived, Buffer.from(String(a.password_hash), 'hex'))
   )
     return respond('Check your email and password.', 401);
+  if (remove) {
+    try {
+      deleteAccount(
+        db,
+        user!.id,
+        String(a.password_hash),
+        hash(sessionToken(request)!),
+        form.get('campaigns') || '',
+      );
+    } catch (error) {
+      if (error instanceof DeletionError) return respond(error.message, 409);
+      throw error;
+    }
+    try {
+      await cleanupDeletedImages(db);
+    } catch {
+      console.error('Deleted account image cleanup will be retried');
+    }
+    return new Response(null, {
+      status: 303,
+      headers: {
+        Location: '/api/auth?deleted',
+        'Set-Cookie': cookie('', 0),
+        'Cache-Control': 'no-store',
+      },
+    });
+  }
   if (revoke) {
     db.exec('BEGIN IMMEDIATE');
     try {

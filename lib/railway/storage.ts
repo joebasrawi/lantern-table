@@ -94,28 +94,68 @@ function imagePath(key: string) {
   if (!root) throw new Error('Persistent image storage unavailable');
   return join(root, 'images', key.replaceAll('/', '_') + '.json');
 }
+function deletedImageOwner(userId: string | undefined) {
+  if (
+    !userId ||
+    !sqlite()
+      .prepare(
+        "SELECT name FROM sqlite_master WHERE type='table' AND name='deleted_accounts'",
+      )
+      .get()
+  )
+    return false;
+  return !!sqlite()
+    .prepare('SELECT id FROM deleted_accounts WHERE id=?')
+    .get(userId);
+}
 const imageStore = {
   async put(
     key: string,
     data: ArrayBuffer,
-    options: { httpMetadata?: { contentType?: string }; customMetadata?: Record<string,string> },
+    options: {
+      httpMetadata?: { contentType?: string };
+      customMetadata?: Record<string, string>;
+    },
   ) {
+    const owner = options.customMetadata?.userId;
+    if (deletedImageOwner(owner)) throw new Error('Account deleted');
     const path = imagePath(key);
     mkdirSync(join(process.env.LANTERN_DATA_DIR!, 'images'), {
       recursive: true,
       mode: 0o700,
     });
     const temp = path + '.' + randomUUID();
-    await writeFile(
-      temp,
-      JSON.stringify({
-        body: Buffer.from(data).toString('base64'),
-        httpMetadata: options.httpMetadata,
-        customMetadata: options.customMetadata,
-      }),
-      { mode: 0o600 },
-    );
-    await rename(temp, path);
+    try {
+      await writeFile(
+        temp,
+        JSON.stringify({
+          body: Buffer.from(data).toString('base64'),
+          httpMetadata: options.httpMetadata,
+          customMetadata: options.customMetadata,
+        }),
+        { mode: 0o600 },
+      );
+      await rename(temp, path);
+      if (deletedImageOwner(owner)) {
+        try {
+          await unlink(path);
+        } catch (error) {
+          if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
+            sqlite()
+              .prepare(
+                'UPDATE deleted_accounts SET cleanup_pending=cleanup_pending+1 WHERE id=?',
+              )
+              .run(owner!);
+            throw error;
+          }
+        }
+        throw new Error('Account deleted');
+      }
+    } finally {
+      await unlink(temp).catch((error) => {
+        if (error.code !== 'ENOENT') throw error;
+      });
+    }
   },
   async get(key: string) {
     try {
