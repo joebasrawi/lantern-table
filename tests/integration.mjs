@@ -73,6 +73,11 @@ assert.equal(
   (await api('local_2', { op: 'join', invite: a.invite })).status,
   200,
 );
+const readSnapshot = await get('local_2');
+const readEvent = readSnapshot.state.events
+  .filter((e) => e.kind !== 'chat')
+  .at(-1);
+assert.ok(readEvent);
 const p = {
   name: 'Elara',
   ancestry: 'Human',
@@ -90,6 +95,52 @@ assert.equal(
   (await post('local_2', { op: 'settings', settings: opts })).status,
   403,
 );
+assert.equal(
+  (
+    await api('local_2', {
+      id,
+      version: readSnapshot.version,
+      requestId: crypto.randomUUID(),
+      op: 'seen',
+    })
+  ).status,
+  409,
+);
+const acknowledged = await api('local_2', {
+  id,
+  version: readSnapshot.version,
+  requestId: crypto.randomUUID(),
+  op: 'seen',
+  through: readEvent.id,
+});
+assert.equal(acknowledged.status, 200);
+assert.equal(
+  acknowledged.data.state.seen[identities.local_2 || 'local_2'],
+  readEvent.at,
+);
+assert.ok(
+  (await api('local_2', null)).data.find((c) => c.id === id).unread > 0,
+);
+assert.equal(
+  (await post('local_2', { op: 'seen', through: 'missing-event' })).status,
+  400,
+);
+assert.equal((await post('local_2', { op: 'seen' })).status, 200);
+const latestRead = (await get('local_2')).state.seen[
+  identities.local_2 || 'local_2'
+];
+assert.equal(
+  (await post('local_2', { op: 'seen', through: readEvent.id })).status,
+  200,
+);
+assert.equal(
+  (await get('local_2')).state.seen[identities.local_2 || 'local_2'],
+  latestRead,
+);
+console.log(
+  'PASS: read acknowledgements preserve unseen arrivals and never move backwards',
+);
+
 if (process.env.TEST_PORTRAIT_PAUSED === 'true') {
   const portraitCall = async (cookie, origin = base) =>
     fetch(`${base}/api/portrait/generate?campaign=${id}`, {

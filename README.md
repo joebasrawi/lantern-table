@@ -142,7 +142,7 @@ The server preserves identity, level, XP, earned health/energy capacity, invento
 
 ## Find your next turn
 
-The adventure list shows member-specific attention cues for a combat turn, an unanswered party vote, host decisions, pending human-DM work, and proposed abilities. Waiting states distinguish a saved vote or action from something you still need to do. New-event counts reflect the campaign’s explicit Mark read state. The list refreshes every 15 seconds while visible and when returning to the tab; it retains the last successful list during a temporary connection failure. These are in-app status cues, not email or push notifications.
+The adventure list shows member-specific attention cues for a combat turn, an unanswered party vote, host decisions, pending human-DM work, and proposed abilities. Waiting states distinguish a saved vote or action from something you still need to do. New-event counts reflect the campaign’s explicit Mark read state. Returning to the campaign list does not mark events read. Read acknowledgements stop at the latest event in the player’s loaded snapshot; newer arrivals stay unread, and a delayed tab cannot move read progress backwards. The list refreshes every 15 seconds while visible and when returning to the tab; it retains the last successful list during a temporary connection failure. These are in-app status cues, not email or push notifications.
 
 ## Revise a campaign’s world
 

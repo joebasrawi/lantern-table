@@ -391,9 +391,23 @@ export async function mutate(user: User, v: Record<string, unknown>) {
           c.hostDefenseConsent = v.hostDefenseConsent;
         break;
       }
-      case 'seen':
-        s.seen[user.id] = now();
+      case 'seen': {
+        // Older clients must refresh before acknowledging a changed campaign.
+        if (v.through === undefined && v.version !== row.version)
+          throw new GameError(
+            'The campaign changed. Review the latest events and try again.',
+            409,
+          );
+        const event =
+          v.through === undefined
+            ? s.events.filter((e) => e.kind !== 'chat').at(-1)
+            : s.events.find((e) => e.id === v.through && e.kind !== 'chat');
+        if (!event)
+          throw new GameError('Choose an adventure event to mark read.');
+        // A delayed tab must never advance beyond its snapshot or move read state backwards.
+        if (event.at > (s.seen[user.id] || '')) s.seen[user.id] = event.at;
         break;
+      }
       case 'chat': {
         addEvent(
           s,

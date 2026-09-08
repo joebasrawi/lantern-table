@@ -322,6 +322,12 @@ export default function Game() {
         '',
         {
           ...(c ? { id: c.id, version: c.version } : {}),
+          ...(c && data.op === 'seen'
+            ? {
+                through: c.state.events.filter((e) => e.kind !== 'chat').at(-1)
+                  ?.id,
+              }
+            : {}),
           requestId: crypto.randomUUID(),
           ...data,
         },
@@ -396,7 +402,6 @@ export default function Game() {
     }
   }
   async function back() {
-    if (campaign) await post({ op: 'seen' });
     setCampaign(null);
     setPanel('');
     history.replaceState(null, '', '/');
@@ -704,9 +709,9 @@ export default function Game() {
                       <BookOpen size={15} />
                       {catchUp}
                       <button
-                        onClick={() => {
-                          void post({ op: 'seen' });
-                          setCatchUp('');
+                        disabled={busy}
+                        onClick={async () => {
+                          if (await post({ op: 'seen' })) setCatchUp('');
                         }}
                       >
                         Mark read
