@@ -66,9 +66,32 @@ function sessionToken(request: Request) {
     .get('cookie')
     ?.match(/(?:^|;\s*)lantern_session=([a-f0-9]{64})(?:;|$)/)?.[1];
 }
+const authStyle =
+  'body{margin:0;background:#0c0e0d;color:#eeeade;font:16px system-ui;min-height:100vh;display:grid;place-items:center}main{width:min(340px,calc(100% - 48px));padding:40px 0}h1{font:32px Georgia}p{color:#b7b9b0;line-height:1.6}label{display:block;margin:20px 0 8px}input,button{box-sizing:border-box;width:100%;padding:13px;border-radius:5px;font:inherit}input{border:1px solid #45483d;background:#161915;color:inherit}button{margin-top:24px;border:0;background:#cebd8d;color:#171910;cursor:pointer}a{color:#cebd8d}.error{color:#efb2a8}';
 function page(error = '', status = 200, change = false) {
   return new Response(
-    `<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${change ? 'Change password' : 'Sign in'} · Lantern Table</title><style>body{margin:0;background:#0c0e0d;color:#eeeade;font:16px system-ui;min-height:100vh;display:grid;place-items:center}main{width:min(340px,calc(100% - 48px));padding:40px 0}h1{font:32px Georgia}p{color:#b7b9b0;line-height:1.6}label{display:block;margin:20px 0 8px}input,button{box-sizing:border-box;width:100%;padding:13px;border-radius:5px;font:inherit}input{border:1px solid #45483d;background:#161915;color:inherit}button{margin-top:24px;border:0;background:#cebd8d;color:#171910;cursor:pointer}a{color:#cebd8d}.error{color:#efb2a8}</style><main><a href="/">Lantern Table</a><h1>${change ? 'Change password' : 'Welcome back.'}</h1><p>${change ? 'Choose a password of 12–200 characters. You will be signed out on all devices afterward.' : 'Sign in to return to your adventures.'}</p>${error ? '<p role="alert" class="error">' + error + '</p>' : ''}<form method="post" action="/api/auth${change ? '?password' : ''}">${change ? '' : '<label for="email">Email</label><input id="email" name="email" type="email" required autocomplete="username" maxlength="254">'}<label for="password">${change ? 'Current password' : 'Password'}</label><input id="password" name="password" type="password" required autocomplete="current-password" maxlength="200">${change ? '<label for="newPassword">New password</label><input id="newPassword" name="newPassword" type="password" required autocomplete="new-password" minlength="12" maxlength="200"><label for="confirmPassword">Confirm new password</label><input id="confirmPassword" name="confirmPassword" type="password" required autocomplete="new-password" minlength="12" maxlength="200">' : ''}<button>${change ? 'Change password' : 'Sign in'}</button></form>${change ? '' : '<p><a href=/api/auth?forgot>Forgot your password?</a></p><p>This is a private table. Ask your host for an account.</p>'}${!change && signupEnabled() ? '<p><a href=/api/auth?signup>Create an account</a></p>' : ''}</main></html>`,
+    `<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${change ? 'Change password' : 'Sign in'} · Lantern Table</title><style>${authStyle}</style><main><a href="/">Lantern Table</a><h1>${change ? 'Change password' : 'Welcome back.'}</h1><p>${change ? 'Choose a password of 12–200 characters. You will be signed out on all devices afterward.' : 'Sign in to return to your adventures.'}</p>${error ? '<p role="alert" class="error">' + error + '</p>' : ''}<form method="post" action="/api/auth${change ? '?password' : ''}">${change ? '' : '<label for="email">Email</label><input id="email" name="email" type="email" required autocomplete="username" maxlength="254">'}<label for="password">${change ? 'Current password' : 'Password'}</label><input id="password" name="password" type="password" required autocomplete="current-password" maxlength="200">${change ? '<label for="newPassword">New password</label><input id="newPassword" name="newPassword" type="password" required autocomplete="new-password" minlength="12" maxlength="200"><label for="confirmPassword">Confirm new password</label><input id="confirmPassword" name="confirmPassword" type="password" required autocomplete="new-password" minlength="12" maxlength="200">' : ''}<button>${change ? 'Change password' : 'Sign in'}</button></form>${change ? '' : '<p><a href=/api/auth?forgot>Forgot your password?</a></p><p>This is a private table. Ask your host for an account.</p>'}${!change && signupEnabled() ? '<p><a href=/api/auth?signup>Create an account</a></p>' : ''}</main></html>`,
+    {
+      status,
+      headers: {
+        'Content-Type': 'text/html; charset=utf-8',
+        'Cache-Control': 'no-store',
+        'Content-Security-Policy':
+          "default-src 'none'; style-src 'unsafe-inline'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'",
+      },
+    },
+  );
+}
+function accountPage(userId: string, token: string, error = '', status = 200) {
+  const others = Number(
+    authDb()
+      .prepare(
+        'SELECT COUNT(*) AS count FROM sessions WHERE user_id=? AND token_hash<>? AND expires>?',
+      )
+      .get(userId, hash(token), Date.now())?.count || 0,
+  );
+  return new Response(
+    `<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Account · Lantern Table</title><style>${authStyle}</style><main><a href="/">Back to adventures</a><h1>Your account</h1><p><a href="/api/auth?password">Change password</a></p><h2>Signed-in sessions</h2><p>This browser is signed in. ${others ? `You have ${others} other signed-in ${others === 1 ? 'session' : 'sessions'}.` : 'No other sessions are signed in.'}</p><p>A session is a browser sign-in, not necessarily a separate device. Closing other sessions keeps this browser signed in and preserves your campaigns.</p>${error ? `<p class="error" role="alert">${error}</p>` : ''}${others ? '<form method="post" action="/api/auth?sessions"><label for="password">Current password</label><input id="password" name="password" type="password" required autocomplete="current-password" maxlength="200"><button>Sign out other sessions</button></form>' : ''}<p><a href="/api/auth?logout">Sign out of this browser</a></p></main></html>`,
     {
       status,
       headers: {
@@ -82,6 +105,16 @@ function page(error = '', status = 200, change = false) {
 }
 export async function authGet(request: Request) {
   const params = new URL(request.url).searchParams;
+  if (params.has('account')) {
+    const token = sessionToken(request);
+    const user = await railwayUser(token);
+    if (!user || !token)
+      return new Response(null, {
+        status: 303,
+        headers: { Location: '/api/auth', 'Cache-Control': 'no-store' },
+      });
+    return accountPage(user.id, token);
+  }
   if (params.has('signup') || params.has('verify')) return signupGet(request);
   if (params.has('forgot') || params.has('reset')) return recoveryGet(request);
   if (new URL(request.url).searchParams.has('password')) {
@@ -143,10 +176,15 @@ export async function authPost(request: Request) {
   if (params.has('forgot') || params.has('reset'))
     return recoveryPost(authDb(), request, raw);
   const change = params.has('password');
-  const user = change ? await railwayUser(sessionToken(request)) : null;
-  if (change && !user) return page('Sign in to change your password.', 401);
+  const revoke = params.has('sessions');
+  const protectedAction = change || revoke;
+  const user = protectedAction
+    ? await railwayUser(sessionToken(request))
+    : null;
+  if (protectedAction && !user)
+    return page('Sign in to manage your account.', 401);
   const form = new URLSearchParams(raw),
-    email = change
+    email = protectedAction
       ? String(
           authDb()
             .prepare('SELECT email FROM accounts WHERE id=?')
@@ -155,7 +193,9 @@ export async function authPost(request: Request) {
       : (form.get('email') || '').trim().toLowerCase(),
     password = form.get('password') || '';
   const respond = (message: string, status: number) =>
-    page(message, status, change);
+    revoke
+      ? accountPage(user!.id, sessionToken(request)!, message, status)
+      : page(message, status, change);
   const newPassword = form.get('newPassword') || '';
   if (
     change &&
@@ -198,6 +238,33 @@ export async function authPost(request: Request) {
     !timingSafeEqual(derived, Buffer.from(String(a.password_hash), 'hex'))
   )
     return respond('Check your email and password.', 401);
+  if (revoke) {
+    db.exec('BEGIN IMMEDIATE');
+    try {
+      const current = db
+        .prepare(
+          'SELECT a.password_hash FROM accounts a JOIN sessions s ON s.user_id=a.id WHERE a.id=? AND s.token_hash=? AND s.expires>?',
+        )
+        .get(user!.id, hash(sessionToken(request)!), Date.now());
+      if (current?.password_hash !== a.password_hash) {
+        db.exec('ROLLBACK');
+        return page('Your session changed. Sign in and try again.', 409);
+      }
+      db.prepare('DELETE FROM sessions WHERE user_id=? AND token_hash<>?').run(
+        user!.id,
+        hash(sessionToken(request)!),
+      );
+      db.prepare('DELETE FROM login_attempts WHERE email=?').run(email);
+      db.exec('COMMIT');
+    } catch (error) {
+      db.exec('ROLLBACK');
+      throw error;
+    }
+    return new Response(null, {
+      status: 303,
+      headers: { Location: '/api/auth?account', 'Cache-Control': 'no-store' },
+    });
+  }
   if (change) {
     const salt = randomBytes(16).toString('hex');
     const replacement = (await scrypt(newPassword, salt, 64)) as Buffer;

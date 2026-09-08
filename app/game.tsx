@@ -464,8 +464,8 @@ export default function Game() {
               <span className="account">
                 {user.name}
                 {__LANTERN_RAILWAY__ && (
-                  <a href="/api/auth?password" target="_top">
-                    Change password
+                  <a href="/api/auth?account" target="_top">
+                    Account
                   </a>
                 )}
                 <a
