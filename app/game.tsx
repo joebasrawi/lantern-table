@@ -1,4 +1,5 @@
 'use client';
+import { TurnNotifications } from './turn-notifications';
 import { RulesGuide } from './rules-guide';
 // Auth endpoints are dispatch-owned and require full top-level navigation.
 /* oxlint-disable next/no-html-link-for-pages */
@@ -463,6 +464,9 @@ export default function Game() {
             {user && (
               <span className="account">
                 {user.name}
+                {__LANTERN_RAILWAY__ && (
+                  <TurnNotifications key={user.id} userId={user.id} />
+                )}
                 {__LANTERN_RAILWAY__ && (
                   <a href="/api/auth?account" target="_top">
                     Account

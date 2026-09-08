@@ -396,6 +396,12 @@ export async function authPost(request: Request) {
     String(a.id),
     now + 30 * 86400000,
   );
+  // Replacing this browser's login also revokes subscriptions tied to its old session.
+  const previousToken = sessionToken(request);
+  if (previousToken)
+    db.prepare('DELETE FROM sessions WHERE token_hash=?').run(
+      hash(previousToken),
+    );
   return new Response(null, {
     status: 303,
     headers: {

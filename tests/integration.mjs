@@ -66,18 +66,30 @@ if (process.env.TEST_PUSH === 'true') {
     (
       await push(
         'local_1',
-        { op: 'subscribe', subscription },
+        { op: 'subscribe', userId: identities.local_1, subscription },
         'https://foreign.example',
       )
     ).status,
     403,
   );
   assert.equal(
-    (await push('local_1', { op: 'subscribe', subscription })).status,
+    (
+      await push('local_1', {
+        op: 'subscribe',
+        userId: identities.local_1,
+        subscription,
+      })
+    ).status,
     200,
   );
   assert.equal(
-    (await push('local_2', { op: 'subscribe', subscription })).status,
+    (
+      await push('local_2', {
+        op: 'subscribe',
+        userId: identities.local_2,
+        subscription,
+      })
+    ).status,
     409,
   );
   assert.deepEqual(
@@ -97,6 +109,7 @@ if (process.env.TEST_PUSH === 'true') {
     (
       await push('local_1', {
         op: 'subscribe',
+        userId: identities.local_1,
         subscription: { ...subscription, endpoint: 'http://localhost/private' },
       })
     ).status,

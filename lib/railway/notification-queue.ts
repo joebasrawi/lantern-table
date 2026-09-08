@@ -10,7 +10,8 @@ export function notificationTables(db: DatabaseSync) {
       id TEXT PRIMARY KEY,
       user_id TEXT NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
       subscription TEXT NOT NULL,
-      created_at INTEGER NOT NULL
+      created_at INTEGER NOT NULL,
+      session_hash TEXT REFERENCES sessions(token_hash) ON DELETE CASCADE
     );
     CREATE INDEX IF NOT EXISTS push_subscriptions_user ON push_subscriptions(user_id);
     CREATE TABLE IF NOT EXISTS push_notifications (
@@ -28,6 +29,20 @@ export function notificationTables(db: DatabaseSync) {
     );
     CREATE INDEX IF NOT EXISTS push_notifications_due ON push_notifications(status,next_attempt);
   `);
+  if (
+    !db
+      .prepare('PRAGMA table_info(push_subscriptions)')
+      .all()
+      .some((column) => column.name === 'session_hash')
+  )
+    db.exec(
+      'ALTER TABLE push_subscriptions ADD COLUMN session_hash TEXT REFERENCES sessions(token_hash) ON DELETE CASCADE',
+    );
+}
+function revokeExpired(db: DatabaseSync, now: number) {
+  db.prepare(`DELETE FROM push_subscriptions WHERE session_hash IS NULL OR NOT EXISTS (
+    SELECT 1 FROM sessions s WHERE s.token_hash=push_subscriptions.session_hash
+      AND s.user_id=push_subscriptions.user_id AND s.expires>?)`).run(now);
 }
 type Source = {
   subscription_id: string;
@@ -54,6 +69,7 @@ export function refreshNotifications(db: DatabaseSync, now = Date.now()) {
   notificationTables(db);
   db.exec('BEGIN IMMEDIATE');
   try {
+    revokeExpired(db, now);
     const rows = db
       .prepare(`SELECT p.id AS subscription_id, p.user_id,
       c.id AS campaign_id,c.host_id,c.state FROM push_subscriptions p
@@ -105,6 +121,7 @@ export function claimNotification(
   notificationTables(db);
   db.exec('BEGIN IMMEDIATE');
   try {
+    revokeExpired(db, now);
     // A crashed sender gets a bounded retry after its lease. Sending is at-least-once;
     // the eventual service worker must use a stable notification tag to replace retries.
     db.prepare(`UPDATE push_notifications SET status='failed',claim=NULL

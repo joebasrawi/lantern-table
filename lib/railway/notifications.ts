@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { sqlite } from './storage';
 import {
   SubscriptionError,
@@ -69,12 +70,29 @@ export async function notifications(request: Request, userId: string | null) {
       return json({ active: subscriptionActive(db, userId, body.endpoint) });
     if (body.op !== 'subscribe')
       return json({ error: 'Unknown notification action.' }, 400);
+    if (body.userId !== userId)
+      return json(
+        {
+          error:
+            'Your sign-in changed. Reload the game before enabling notifications.',
+        },
+        409,
+      );
     if (!enabled)
       return json(
         { error: 'Browser notifications are not available yet.' },
         503,
       );
-    saveSubscription(db, userId, body.subscription);
+    const token = request.headers
+      .get('cookie')
+      ?.match(/(?:^|;\s*)lantern_session=([a-f0-9]{64})(?:;|$)/)?.[1];
+    if (!token) return json({ error: 'Sign in to manage notifications.' }, 401);
+    saveSubscription(
+      db,
+      userId,
+      body.subscription,
+      createHash('sha256').update(token).digest('hex'),
+    );
     return json({ active: true });
   } catch (e) {
     if (e instanceof SubscriptionError)

@@ -22,10 +22,12 @@ function setup(t, path = ':memory:') {
   t.after(() => db.close());
   db.exec(`PRAGMA foreign_keys=ON;
     CREATE TABLE accounts(id TEXT PRIMARY KEY);
+    CREATE TABLE sessions(token_hash TEXT PRIMARY KEY,user_id TEXT,expires INTEGER);
     CREATE TABLE campaigns(id TEXT PRIMARY KEY,host_id TEXT,state TEXT);
     CREATE TABLE members(campaign_id TEXT,user_id TEXT,PRIMARY KEY(campaign_id,user_id),
       FOREIGN KEY(campaign_id) REFERENCES campaigns(id) ON DELETE CASCADE);
-    INSERT INTO accounts VALUES('one'),('two'),('host'),('outsider');`);
+    INSERT INTO accounts VALUES('one'),('two'),('host'),('outsider');
+    INSERT INTO sessions SELECT id,id,9999999999999 FROM accounts;`);
   notificationTables(db);
   const state = initialState(
     'SECRET TITLE',
@@ -54,12 +56,9 @@ function setup(t, path = ':memory:') {
   for (const user of ['one', 'two', 'host'])
     db.prepare('INSERT INTO members VALUES(?,?)').run('campaign', user);
   for (const user of ['one', 'two', 'host', 'outsider'])
-    db.prepare('INSERT INTO push_subscriptions VALUES(?,?,?,?)').run(
-      user + '-browser',
-      user,
-      '{}',
-      0,
-    );
+    db.prepare(
+      'INSERT INTO push_subscriptions(id,user_id,subscription,created_at,session_hash) VALUES(?,?,?,?,?)',
+    ).run(user + '-browser', user, '{}', 0, user);
   const save = () =>
     db.prepare('UPDATE campaigns SET state=?').run(JSON.stringify(state));
   const rows = () =>
@@ -271,4 +270,14 @@ await test('claims and acknowledgements persist across independent database conn
   } finally {
     other.close();
   }
+});
+
+await test('session sign-out cascades subscriptions and expiration is checked before claim', (t) => {
+  const { db, rows } = setup(t);
+  refreshNotifications(db, 0);
+  db.prepare('DELETE FROM sessions WHERE token_hash=?').run('one');
+  assert.equal(rows().length, 1);
+  db.prepare('UPDATE sessions SET expires=? WHERE token_hash=?').run(1, 'two');
+  assert.equal(claimNotification(db, 1), null);
+  assert.equal(rows().length, 0);
 });

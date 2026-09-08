@@ -73,6 +73,7 @@ export function saveSubscription(
   db: DatabaseSync,
   userId: string,
   input: unknown,
+  sessionHash: string,
   now = Date.now(),
 ) {
   const subscription = validateSubscription(input);
@@ -80,7 +81,13 @@ export function saveSubscription(
   notificationTables(db);
   db.exec('BEGIN IMMEDIATE');
   try {
-    if (!db.prepare('SELECT id FROM accounts WHERE id=?').get(userId))
+    if (
+      !db
+        .prepare(
+          'SELECT token_hash FROM sessions WHERE token_hash=? AND user_id=? AND expires>?',
+        )
+        .get(sessionHash, userId, now)
+    )
       throw new SubscriptionError('Sign in to manage notifications.', 401);
     const prior = db
       .prepare('SELECT user_id,subscription FROM push_subscriptions WHERE id=?')
@@ -111,8 +118,8 @@ export function saveSubscription(
         409,
       );
     db.prepare(
-      'INSERT OR IGNORE INTO push_subscriptions(id,user_id,subscription,created_at) VALUES(?,?,?,?)',
-    ).run(id, userId, serialized, now);
+      'INSERT INTO push_subscriptions(id,user_id,subscription,created_at,session_hash) VALUES(?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET session_hash=excluded.session_hash',
+    ).run(id, userId, serialized, now, sessionHash);
     db.exec('COMMIT');
   } catch (e) {
     db.exec('ROLLBACK');

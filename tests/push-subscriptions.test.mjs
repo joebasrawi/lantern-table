@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createECDH, randomBytes } from 'node:crypto';
+import { createECDH, randomBytes, createHash } from 'node:crypto';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -12,7 +12,7 @@ const { notifications } =
   await import('../.test-build/railway/notifications.js');
 const {
   validateSubscription,
-  saveSubscription,
+  saveSubscription: saveSubscriptionImpl,
   removeSubscription,
   subscriptionActive,
 } = await import('../.test-build/railway/push-subscriptions.js');
@@ -31,11 +31,25 @@ const subscription = (suffix = 'browser') => {
     },
   };
 };
+const tokens = { one: '1'.repeat(64), two: '2'.repeat(64) };
+const hash = (value) => createHash('sha256').update(value).digest('hex');
+db.exec(
+  'CREATE TABLE sessions(token_hash TEXT PRIMARY KEY,user_id TEXT REFERENCES accounts(id) ON DELETE CASCADE,expires INTEGER)',
+);
+for (const id of ['one', 'two'])
+  db.prepare('INSERT INTO sessions VALUES(?,?,?)').run(
+    hash(tokens[id]),
+    id,
+    Date.now() + 3600000,
+  );
+const saveSubscription = (db, id, input, now = Date.now()) =>
+  saveSubscriptionImpl(db, id, input, hash(tokens[id]), now);
 const request = (body, headers = {}) =>
   new Request('https://game.example/api/notifications', {
     method: 'POST',
     headers: {
       origin: 'https://game.example',
+      cookie: 'lantern_session=' + tokens.one,
       'content-type': 'application/json',
       ...headers,
     },
@@ -169,7 +183,11 @@ await test('subscription endpoints require authentication, same origin, JSON and
   assert.equal(
     (
       await notifications(
-        request({ op: 'subscribe', subscription: subscription() }),
+        request({
+          op: 'subscribe',
+          userId: 'one',
+          subscription: subscription(),
+        }),
         'one',
       )
     ).status,
@@ -182,7 +200,7 @@ await test('enabled API registers, reports only ownership and revokes while disa
   process.env.LANTERN_VAPID_PRIVATE_KEY = 'SECRET PRIVATE KEY';
   const value = subscription('api');
   const result = await notifications(
-    request({ op: 'subscribe', subscription: value }),
+    request({ op: 'subscribe', userId: 'one', subscription: value }),
     'one',
   );
   assert.equal(result.status, 200);
@@ -201,7 +219,10 @@ await test('enabled API registers, reports only ownership and revokes while disa
   );
   assert.deepEqual(await other.json(), { active: false });
   const denied = await notifications(
-    request({ op: 'subscribe', subscription: value }),
+    request(
+      { op: 'subscribe', userId: 'two', subscription: value },
+      { cookie: 'lantern_session=' + tokens.two },
+    ),
     'two',
   );
   assert.equal(denied.status, 409);
@@ -227,6 +248,24 @@ await test('deleted identities cannot re-register through an already authenticat
     db.prepare('SELECT COUNT(*) AS count FROM push_subscriptions').get().count,
     0,
   );
+});
+await test('session ownership is checked at registration and re-registration follows the latest valid login', () => {
+  const value = subscription('session');
+  assert.throws(() => saveSubscriptionImpl(db, 'one', value, 'missing'), {
+    status: 401,
+  });
+  const fresh = 'fresh-session-hash';
+  db.prepare('INSERT INTO sessions VALUES(?,?,?)').run(
+    fresh,
+    'one',
+    Date.now() + 3600000,
+  );
+  saveSubscription(db, 'one', value);
+  saveSubscriptionImpl(db, 'one', value, fresh);
+  db.prepare('DELETE FROM sessions WHERE token_hash=?').run(hash(tokens.one));
+  assert.equal(subscriptionActive(db, 'one', value.endpoint), true);
+  db.prepare('DELETE FROM sessions WHERE token_hash=?').run(fresh);
+  assert.equal(subscriptionActive(db, 'one', value.endpoint), false);
 });
 db.close();
 rmSync(directory, { recursive: true, force: true });
