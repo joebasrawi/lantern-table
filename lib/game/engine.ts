@@ -846,3 +846,77 @@ export function hostDefend(s: CampaignState) {
     `The host resolves ${c.name}’s turn as defense, using that player’s permission.`,
   );
 }
+
+export function changeInventory(
+  s: CampaignState,
+  actorId: string,
+  host: boolean,
+  v: Record<string, unknown>,
+) {
+  if (s.encounter || s.decision || s.pending.length)
+    throw new GameError(
+      'Change equipment after the current encounter, decision, or pending actions.',
+    );
+  const kind = choice(
+    v.kind,
+    ['grant', 'remove', 'give'] as const,
+    'equipment action',
+  );
+  if (kind !== 'give' && !host)
+    throw new GameError(
+      'Only the campaign host can grant or remove equipment.',
+      403,
+    );
+  const source = s.characters.find((c) => c.id === v.characterId);
+  if (!source) throw new GameError('Character not found.', 404);
+  if (kind === 'give' && source.userId !== actorId)
+    throw new GameError(
+      'You can only give items from your own inventory.',
+      403,
+    );
+  if (kind === 'grant') {
+    const item = text(v.item, 'Item name', 80);
+    if (source.inventory.length >= 24)
+      throw new GameError('This character already carries 24 items.');
+    source.inventory.push(item);
+    addEvent(s, 'system', 'Dungeon master', `${source.name} receives ${item}.`);
+    return;
+  }
+  const index = v.index;
+  if (
+    typeof index !== 'number' ||
+    !Number.isInteger(index) ||
+    index < 0 ||
+    index >= source.inventory.length
+  )
+    throw new GameError('Choose an item in this inventory.');
+  const item = source.inventory[index];
+  if (v.item !== item)
+    throw new GameError('The inventory changed. Select the item again.', 409);
+  if (kind === 'remove') {
+    source.inventory.splice(index, 1);
+    addEvent(
+      s,
+      'system',
+      'Dungeon master',
+      `${item} is removed from ${source.name}’s inventory.`,
+    );
+    return;
+  }
+  const target = s.characters.find((c) => c.id === v.targetId);
+  if (!target || target.id === source.id)
+    throw new GameError('Choose another party member.');
+  if (source.hp <= 0 || target.hp <= 0)
+    throw new GameError('Both characters must be conscious to exchange items.');
+  if (target.inventory.length >= 24)
+    throw new GameError('The recipient already carries 24 items.');
+  source.inventory.splice(index, 1);
+  target.inventory.push(item);
+  addEvent(
+    s,
+    'system',
+    source.name,
+    `Gives ${item} to ${target.name}.`,
+    actorId,
+  );
+}

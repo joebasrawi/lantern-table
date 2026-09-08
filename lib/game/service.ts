@@ -9,6 +9,7 @@ import {
   removeAbility,
   levelUp,
   rebuildCharacter,
+  changeInventory,
   check,
   combat,
   deadline,
@@ -222,6 +223,9 @@ export async function mutate(user: User, v: Record<string, unknown>) {
         delete character().portraitAsset;
         break;
       }
+      case 'inventory':
+        changeInventory(s, user.id, host, v);
+        break;
       case 'rebuild':
         rebuildCharacter(s, user.id, v);
         break;

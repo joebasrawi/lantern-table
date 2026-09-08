@@ -881,6 +881,8 @@ export default function Game() {
                   campaign.state.pending.length
                 )
               }
+              party={campaign.state.characters}
+              host={!!host}
               customAllowed={campaign.state.settings.customization === 'custom'}
               upload={uploadImage}
               own={panel === 'character'}
@@ -1502,6 +1504,8 @@ function CharacterBuilder({
   );
 }
 function CharacterSheet({
+  party,
+  host,
   customAllowed,
   advancementBlocked,
   upload,
@@ -1510,6 +1514,8 @@ function CharacterSheet({
   post,
   busy,
 }: {
+  party: Character[];
+  host: boolean;
   upload: (file: File) => Promise<boolean>;
   customAllowed: boolean;
   advancementBlocked: boolean;
@@ -1647,11 +1653,15 @@ function CharacterSheet({
         <ProfileEditor character={c} post={post} busy={busy} upload={upload} />
       )}
       {tab === 'Inventory' && (
-        <ul className="inventory">
-          {c.inventory.map((item, i) => (
-            <li key={`${item}-${i}`}>{item}</li>
-          ))}
-        </ul>
+        <InventoryEditor
+          character={c}
+          party={party}
+          host={host}
+          own={own}
+          post={post}
+          busy={busy}
+          blocked={advancementBlocked}
+        />
       )}
       {tab === 'Notes' && (
         <form
@@ -3047,5 +3057,197 @@ function SceneArtwork({
         not change the location or reveal discoveries.
       </p>
     </details>
+  );
+}
+
+function InventoryEditor({
+  character: c,
+  party,
+  host,
+  own,
+  post,
+  busy,
+  blocked,
+}: {
+  character: Character;
+  party: Character[];
+  host: boolean;
+  own: boolean;
+  post: Post;
+  busy: boolean;
+  blocked: boolean;
+}) {
+  const [item, setItem] = useState('');
+  const [message, setMessage] = useState('');
+  const itemInput = useRef<HTMLInputElement>(null);
+  const recipientInput = useRef<HTMLSelectElement>(null);
+  const focusAfterSave = useRef<{ focus: () => void } | null>(null);
+  useEffect(() => {
+    if (!busy && focusAfterSave.current) {
+      focusAfterSave.current.focus();
+      focusAfterSave.current = null;
+    }
+  }, [busy, message]);
+  const [selection, setSelection] = useState<{
+    index: number;
+    inventory: string;
+  } | null>(null);
+  const selected =
+    selection?.inventory === JSON.stringify(c.inventory) ? selection.index : -1;
+  const [target, setTarget] = useState('');
+  const selectedItem = c.inventory[selected];
+  const recipients = party.filter((p) => p.id !== c.id && p.hp > 0);
+  return (
+    <>
+      <p className="muted">
+        Healing kits restore up to 8 health and are consumed during combat.
+        Other items describe what you carry; they do not change armor or attack
+        values.
+      </p>
+      {message && (
+        <p>
+          <output>{message}</output>
+        </p>
+      )}
+      {!c.inventory.length && <p>No items carried.</p>}
+      <ul className="inventory">
+        {c.inventory.map((name, i) => (
+          <li key={`${name}-${i}`}>
+            {own || host ? (
+              <button
+                type="button"
+                aria-pressed={selected === i}
+                className={selected === i ? 'selected' : ''}
+                onClick={() =>
+                  setSelection({
+                    index: i,
+                    inventory: JSON.stringify(c.inventory),
+                  })
+                }
+              >
+                {name}
+              </button>
+            ) : (
+              name
+            )}
+          </li>
+        ))}
+      </ul>
+      {(own || host) && (
+        <>
+          {blocked && (
+            <p className="muted">
+              Equipment changes resume after the current encounter, decision, or
+              pending actions.
+            </p>
+          )}
+          <fieldset disabled={busy || blocked}>
+            {own && (
+              <form
+                onSubmit={async (e) => {
+                  e.preventDefault();
+                  if (
+                    await post({
+                      op: 'inventory',
+                      kind: 'give',
+                      characterId: c.id,
+                      index: selected,
+                      item: selectedItem,
+                      targetId: target,
+                    })
+                  ) {
+                    setSelection(null);
+                    setTarget('');
+                    focusAfterSave.current = recipientInput.current;
+                    setMessage(
+                      `${selectedItem} given to ${recipients.find((p) => p.id === target)?.name || 'the recipient'}.`,
+                    );
+                  }
+                }}
+              >
+                <Field label="Give selected item to">
+                  <select
+                    ref={recipientInput}
+                    value={target}
+                    onChange={(e) => setTarget(e.target.value)}
+                    required
+                  >
+                    <option value="">Choose a party member</option>
+                    {recipients.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.name}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
+                <button disabled={!selectedItem || !target || c.hp <= 0}>
+                  Give item
+                </button>
+              </form>
+            )}
+            {host && (
+              <details>
+                <summary>Manage equipment as DM</summary>
+                <form
+                  onSubmit={async (e) => {
+                    e.preventDefault();
+                    if (
+                      await post({
+                        op: 'inventory',
+                        kind: 'grant',
+                        characterId: c.id,
+                        item,
+                      })
+                    ) {
+                      setItem('');
+                      focusAfterSave.current = itemInput.current;
+                      setMessage(`${item} granted to ${c.name}.`);
+                    }
+                  }}
+                >
+                  <Field label="Item name">
+                    <input
+                      ref={itemInput}
+                      value={item}
+                      onChange={(e) => setItem(e.target.value)}
+                      maxLength={80}
+                      required
+                      placeholder="e.g. Brass compass"
+                    />
+                  </Field>
+                  <p className="muted">
+                    Use the exact name “Healing kit” to grant the usable
+                    recovery item. Maximum 24 items per character.
+                  </p>
+                  <button disabled={!item.trim() || c.inventory.length >= 24}>
+                    Grant item
+                  </button>
+                </form>
+                <button
+                  disabled={!selectedItem}
+                  onClick={async () => {
+                    if (
+                      await post({
+                        op: 'inventory',
+                        kind: 'remove',
+                        characterId: c.id,
+                        index: selected,
+                        item: selectedItem,
+                      })
+                    ) {
+                      setSelection(null);
+                      focusAfterSave.current = itemInput.current;
+                      setMessage(`${selectedItem} removed.`);
+                    }
+                  }}
+                >
+                  Remove selected item
+                </button>
+              </details>
+            )}
+          </fieldset>
+        </>
+      )}
+    </>
   );
 }

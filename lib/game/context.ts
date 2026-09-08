@@ -122,6 +122,7 @@ export function narrationContext(s: CampaignState, action: string) {
       role: c.role,
       concept: c.concept.slice(0, 500),
       hp: c.hp,
+      inventory: c.inventory.slice(0, 24).map((item) => item.slice(0, 80)),
       abilities: (c.abilities || [])
         .filter((a) => a.approved)
         .map((a) => ({ name: a.name, effect: a.effect })),

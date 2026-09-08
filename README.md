@@ -164,3 +164,10 @@ AI-proposed encounters retain the standard values. Existing saved enemies withou
 Each request reserves a slot atomically in persistent storage before contacting the provider. Failed, interrupted, or unparseable replies still count, because provider work may already have occurred. Restarting does not reset the counter. Increasing the setting can allow more requests that day; decreasing it below usage stops further requests. Reaching the limit returns an error without saving the attempted game turn or spending character resources.
 
 This is a request-count safeguard, not a dollar budget, billing system, token ledger, or per-player quota. It does not cover API use outside this installation. There is no player-facing usage dashboard yet. The database creates the single-row allowance table on first use; retain the persistent database when redeploying.
+
+
+### Equipment and party transfers
+
+Open Character → Inventory to select an item and give it to another conscious party member. The campaign host can open any character’s Inventory → Manage equipment as DM to grant or remove items, including without owning a player character. Equipment changes wait until encounters, decisions, and pending player actions are resolved. Every change is saved in shared history. Transfers move one existing item and cannot mint copies through retries; only the owner can give their items. A character can carry up to 24 items with names up to 80 characters.
+
+The exact item name `Healing kit` retains its combat effect: consume one to restore up to 8 health. Custom gear names are descriptive; they do not change weapon damage, range, armor, or attributes. There is no pricing, weight, equipment-slot, or custom item-effect system yet. Current inventory is included in bounded AI narration context; the AI cannot grant or consume items directly.

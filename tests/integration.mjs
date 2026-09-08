@@ -90,6 +90,83 @@ assert.equal(
   (await post('local_2', { op: 'settings', settings: opts })).status,
   403,
 );
+const gearCharacters = (await get('local_1')).state.characters;
+const gearHost = gearCharacters.find(
+  (c) => c.userId === (identities.local_1 || 'local_1'),
+);
+const gearPlayer = gearCharacters.find(
+  (c) => c.userId === (identities.local_2 || 'local_2'),
+);
+assert.equal(
+  (
+    await post('local_2', {
+      op: 'inventory',
+      kind: 'grant',
+      characterId: gearPlayer.id,
+      item: 'Healing kit',
+    })
+  ).status,
+  403,
+);
+assert.equal(
+  (
+    await post('local_2', {
+      op: 'inventory',
+      kind: 'give',
+      characterId: gearHost.id,
+      index: 1,
+      item: 'Healing kit',
+      targetId: gearPlayer.id,
+    })
+  ).status,
+  403,
+);
+assert.equal(
+  (
+    await post('local_1', {
+      op: 'inventory',
+      kind: 'grant',
+      characterId: gearHost.id,
+      item: 'Brass compass',
+    })
+  ).status,
+  200,
+);
+const transferBefore = await get('local_1');
+const giveBody = {
+  op: 'inventory',
+  kind: 'give',
+  id,
+  version: transferBefore.version,
+  requestId: crypto.randomUUID(),
+  characterId: gearHost.id,
+  index: 3,
+  item: 'Brass compass',
+  targetId: gearPlayer.id,
+};
+assert.equal((await api('local_1', giveBody)).status, 200);
+assert.equal((await api('local_1', giveBody)).status, 200);
+const transferAfter = await get('local_2');
+assert.equal(
+  transferAfter.state.characters
+    .find((c) => c.id === gearPlayer.id)
+    .inventory.filter((i) => i === 'Brass compass').length,
+  1,
+);
+assert.ok(
+  !transferAfter.state.characters
+    .find((c) => c.id === gearHost.id)
+    .inventory.includes('Brass compass'),
+);
+assert.equal(
+  (await api('local_1', { ...giveBody, requestId: crypto.randomUUID() }))
+    .status,
+  409,
+);
+console.log(
+  'PASS: equipment grant permissions, own-item transfer, idempotent retry, stale rejection and saved recipient inventory',
+);
+
 await post('local_1', {
   op: 'notes',
   notes: 'HOST PLAYER PRIVATE',
