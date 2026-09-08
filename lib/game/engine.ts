@@ -296,6 +296,13 @@ export function startEncounter(
 function advance(s: CampaignState, roll: () => number) {
   const e = s.encounter!;
   e.index++;
+  // Skip unavailable turns before checking the round boundary. Wrapping here
+  // would otherwise bypass the enemy phase when the final slots are down.
+  while (
+    e.index < e.order.length &&
+    !s.characters.some((c) => c.id === e.order[e.index] && c.hp > 0)
+  )
+    e.index++;
   if (e.index >= e.order.length) {
     e.index = 0;
     e.round++;

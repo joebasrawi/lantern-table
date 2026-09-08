@@ -996,6 +996,103 @@ console.log(
   );
 }
 
+// Knock out the slowest character through normal enemy damage, then finish the next round.
+{
+  const created = await api('local_1', {
+    op: 'create',
+    title: 'Downed turn test',
+    setting: 'Future',
+    premise: 'Survive',
+    location: 'Station',
+    settings: opts,
+  });
+  assert.equal(created.status, 200);
+  const downId = created.data.id;
+  const downGet = async () =>
+    (await api('local_1', null, `?id=${downId}`)).data;
+  const downPost = async (who, data) =>
+    api(who, {
+      id: downId,
+      version: (await downGet()).version,
+      requestId: crypto.randomUUID(),
+      ...data,
+    });
+  assert.equal(
+    (await api('local_2', { op: 'join', invite: created.data.invite })).status,
+    200,
+  );
+  assert.equal(
+    (
+      await downPost('local_1', {
+        op: 'character',
+        ...p,
+        name: 'Slow mage',
+        role: 'Arcanist',
+        stats: {
+          strength: 15,
+          dexterity: 8,
+          constitution: 14,
+          intelligence: 13,
+          wisdom: 12,
+          charisma: 10,
+        },
+      })
+    ).status,
+    200,
+  );
+  assert.equal(
+    (await downPost('local_2', { op: 'character', ...p, name: 'Fast scout' }))
+      .status,
+    200,
+  );
+  assert.equal(
+    (
+      await downPost('local_1', {
+        op: 'dm',
+        kind: 'encounter',
+        name: 'Guardian',
+        count: 1,
+        enemyStats: { hp: 500, armor: 12, attackBonus: 15, damage: 50 },
+      })
+    ).status,
+    200,
+  );
+  let view = await downGet();
+  assert.equal(view.state.encounter.order[0], view.state.characters[1].id);
+  assert.equal(
+    (await downPost('local_2', { op: 'combat', action: 'defend' })).status,
+    200,
+  );
+  assert.equal(
+    (await downPost('local_1', { op: 'combat', action: 'defend' })).status,
+    200,
+  );
+  view = await downGet();
+  assert.equal(view.state.characters[0].hp, 0);
+  assert.equal(view.state.encounter.round, 2);
+  const payload = {
+    id: downId,
+    version: view.version,
+    requestId: crypto.randomUUID(),
+    op: 'combat',
+    action: 'defend',
+  };
+  assert.equal((await api('local_2', payload)).status, 200);
+  assert.equal((await api('local_2', payload)).status, 200);
+  view = await downGet();
+  assert.equal(view.state.encounter, null);
+  assert.equal(view.state.characters[1].hp, 0);
+  assert.equal(
+    view.state.events.filter(
+      (e) => e.author === 'Guardian' && e.kind === 'roll',
+    ).length,
+    2,
+  );
+  console.log(
+    'PASS: downed final initiative slot preserves enemy phases, saved defeat and duplicate protection',
+  );
+}
+
 if (credentials) {
   const nextPassword = 'test-only-' + crypto.randomUUID();
   const changed = await fetch(base + '/api/auth?password', {

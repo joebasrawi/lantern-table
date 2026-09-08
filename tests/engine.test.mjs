@@ -364,3 +364,63 @@ await test('advancement rejects missing owners, forged choices, insufficient XP,
   assert.throws(() => levelUp(s, 'one', 'invincible'));
   assert.deepEqual(s, before);
 });
+
+await test('skipping a downed final initiative slot still resolves one enemy phase each round', () => {
+  const s = campaign();
+  startEncounter(s, 'Enemy', 1);
+  const [active, downed] = s.characters;
+  downed.hp = 0;
+  const before = active.hp;
+  let rolls = 0;
+  combat(s, active.userId, 'defend', undefined, undefined, undefined, () => {
+    rolls++;
+    return 20;
+  });
+  assert.equal(s.encounter.round, 2);
+  assert.equal(s.encounter.index, 0);
+  assert.equal(rolls, 1);
+  assert.equal(active.hp, before - 4);
+  assert.deepEqual(s.encounter.defending, []);
+  combat(s, active.userId, 'defend', undefined, undefined, undefined, () => {
+    rolls++;
+    return 20;
+  });
+  assert.equal(s.encounter.round, 3);
+  assert.equal(rolls, 2);
+  assert.equal(active.hp, before - 8);
+});
+
+await test('skipping downed middle slots preserves the remaining living turn before the enemy phase', () => {
+  const s = campaign();
+  s.characters.push(makeCharacter(PRESETS[1], 'three', s));
+  startEncounter(s, 'Enemy', 1);
+  const [first, middle, last] = s.characters;
+  s.encounter.order = [first.id, middle.id, last.id];
+  middle.hp = 0;
+  let rolls = 0;
+  combat(s, first.userId, 'defend', undefined, undefined, undefined, () => {
+    rolls++;
+    return 20;
+  });
+  assert.equal(s.encounter.index, 2);
+  assert.equal(s.encounter.round, 1);
+  assert.equal(rolls, 0);
+  combat(s, last.userId, 'defend', undefined, undefined, undefined, () => {
+    rolls++;
+    return 20;
+  });
+  assert.equal(s.encounter.index, 0);
+  assert.equal(s.encounter.round, 2);
+  assert.equal(rolls, 1);
+});
+
+await test('enemy phase after skipped final slots can defeat the last standing character', () => {
+  const s = campaign();
+  startEncounter(s, 'Enemy', 1);
+  s.characters[0].hp = 1;
+  s.characters[1].hp = 0;
+  combat(s, 'one', 'defend', undefined, undefined, undefined, () => 20);
+  assert.equal(s.encounter, null);
+  assert.equal(s.characters[0].hp, 0);
+  assert.ok(s.events.at(-1).text.includes('The party is down'));
+});
