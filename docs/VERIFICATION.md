@@ -151,3 +151,13 @@ Hosts can revise the campaign name, world/era and premise after resolving curren
 Typecheck, lint, all 73 unit tests, the Railway build, font checks and multiplayer HTTP suite passed. New engine tests verify atomic validation, active-play restrictions, preserved data and updated narration context. HTTP checks verify host-only authorization, unchanged characters/journal, saved return, renamed list entries and rejected edits during a vote.
 
 In a disposable local browser campaign, the host edited all three fields and saved. The settings dialog closed with a success notice and focus returned to Campaign settings. Shared history recorded the revision while the location and member’s 20/20 health stayed unchanged. Reloading and reopening World and premise displayed the saved values. No real campaign was edited. Hosted deployment verification is pending.
+
+World-editor deployment `fc76c6d9-956d-4cff-945a-94adb6498fd7` reached SUCCESS. GitHub Actions run `34254399349` passed for public commit `623f569f49c25fad1067bac9c5f62658a4bf2c9b`. Hosted font preloads and all 12 font assets passed, followed by saved campaign/character/private portrait recovery, origin protection, development-auth rejection and logout. The editing mutation was verified locally with a disposable campaign; no production campaign world was changed.
+
+## Human-DM onboarding and chat — September 8, 2026
+
+Human/assisted campaign creation now skips the player-character builder. Characterless human/assisted hosts see a DM welcome and direct DM Desk action; creating a character remains optional. Party chat permits a characterless host, labels messages DM/Host according to mode, and still uses the existing membership guard. Non-host members without characters and all characterless player actions remain rejected.
+
+Typecheck, lint, the Railway build, font assets and multiplayer HTTP checks passed. Added integration assertions verify a host message reaches another member, has the DM label, and creates neither a character nor pending action; characterless member chat and host player actions are rejected. No rules engine changes were made.
+
+The local browser test created a human-led campaign from the normal New campaign form. It arrived directly at Adventure with no character-builder dialog, sent a Party chat message labeled “Draft tester (DM),” and opened DM Desk through the new welcome action. No live player message was sent. Hosted deployment verification is pending.

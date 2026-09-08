@@ -416,6 +416,7 @@ export default function Game() {
   }
   const me = campaign?.state.characters.find((c) => c.userId === user?.id);
   const host = campaign?.hostId === user?.id;
+  const guiding = host && campaign?.state.settings.dm !== 'ai';
   if (loading)
     return (
       <main className="loading">
@@ -693,16 +694,25 @@ export default function Game() {
                   {!me && (
                     <div className="join-character">
                       <div>
-                        <h2>Who will you be?</h2>
+                        <h2>
+                          {guiding
+                            ? 'You’re the dungeon master'
+                            : 'Who will you be?'}
+                        </h2>
                         <p>
-                          Create a character to take part in this adventure.
+                          {guiding
+                            ? 'Guide the story from DM Desk and talk with your players in Party chat. A player character is optional.'
+                            : 'Create a character to take part in this adventure.'}
                         </p>
                       </div>
                       <button
                         className="primary"
-                        onClick={() => setPanel('builder')}
+                        onClick={() =>
+                          guiding ? setTab('DM Desk') : setPanel('builder')
+                        }
                       >
-                        Create character <ArrowRight size={16} />
+                        {guiding ? 'Open DM Desk' : 'Create character'}{' '}
+                        <ArrowRight size={16} />
                       </button>
                     </div>
                   )}
@@ -739,7 +749,7 @@ export default function Game() {
                       onClick={() => setPanel(me ? 'character' : 'builder')}
                     >
                       <UserRound size={17} />
-                      Character
+                      {me ? 'Character' : 'Create character'}
                     </button>
                     <button onClick={() => setPanel('chat')}>
                       <MessageCircle size={17} />
@@ -827,7 +837,7 @@ export default function Game() {
           busy={busy}
           onCreate={async (v) => {
             if (await post({ op: 'create', ...v })) {
-              setPanel('builder');
+              setPanel((v.settings as Settings).dm === 'ai' ? 'builder' : '');
               setCatchUp('Your story starts here.');
             }
           }}
@@ -882,7 +892,12 @@ export default function Game() {
             onClose={() => setPanel('')}
             title="Party chat"
           >
-            <Chat campaign={campaign} post={post} busy={busy} canSend={!!me} />
+            <Chat
+              campaign={campaign}
+              post={post}
+              busy={busy}
+              canSend={!!me || !!host}
+            />
           </Modal>
           <Modal
             open={panel === 'settings'}

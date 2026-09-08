@@ -275,7 +275,10 @@ export async function mutate(user: User, v: Record<string, unknown>) {
         addEvent(
           s,
           'chat',
-          character().name,
+          s.characters.find((c) => c.userId === user.id)?.name ||
+            (host
+              ? `${user.name} (${s.settings.dm === 'ai' ? 'Host' : 'DM'})`
+              : character().name),
           text(v.text, 'Message', 2000),
           user.id,
         );

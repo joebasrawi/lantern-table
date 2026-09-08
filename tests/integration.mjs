@@ -288,6 +288,31 @@ async function hostPost(user, body) {
     ...body,
   });
 }
+const hostChat = await hostPost('local_1', {
+  op: 'chat',
+  text: 'Welcome, players. I will guide the story.',
+});
+assert.equal(hostChat.status, 200);
+assert.equal(hostChat.data.state.characters.length, 0);
+assert.equal(hostChat.data.state.pending.length, 0);
+assert.match(hostChat.data.state.events.at(-1).author, /\(DM\)$/);
+assert.equal(hostChat.data.state.events.at(-1).kind, 'chat');
+const sharedHostChat = (
+  await api('local_2', null, `?id=${hostCampaign.id}`)
+).data.state.events.at(-1);
+assert.equal(sharedHostChat.text, 'Welcome, players. I will guide the story.');
+assert.equal(
+  (await hostPost('local_2', { op: 'chat', text: 'No character yet' })).status,
+  400,
+);
+assert.equal(
+  (await hostPost('local_1', { op: 'action', text: 'No player character' }))
+    .status,
+  400,
+);
+console.log(
+  'PASS: characterless host chat reaches members without creating a character or player action',
+);
 await hostPost('local_2', { op: 'character', ...p });
 let decision = (
   await hostPost('local_2', {

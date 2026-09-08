@@ -145,3 +145,7 @@ The adventure list shows member-specific attention cues for a combat turn, an un
 ## Revise a campaign’s world
 
 The host can edit the campaign name, world/era and premise under Campaign settings → World and premise. Changes wait until encounters, party decisions and pending actions are resolved. They guide subsequent AI narration and are recorded in shared history, while past events, journal entries, location and character progress are preserved. Members can read these details but cannot edit them.
+
+## Hosting without a player character
+
+A human or assisted DM can create a campaign and begin guiding it without making a player character. Adventure provides a direct DM Desk button, while Create character remains optional. Hosts without characters can use Party chat; their messages show a DM label in human/assisted mode or a Host label in AI mode. Membership checks still protect chat, and player actions still require a character. Chat stays outside the AI narration context.
