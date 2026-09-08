@@ -25,6 +25,7 @@ import {
   voteResult,
   resolveDecision,
   updateSettings,
+  updateWorld,
   applyQueuedSettings,
   choice,
 } from './engine';
@@ -357,6 +358,10 @@ export async function mutate(user: User, v: Record<string, unknown>) {
         break;
       case 'tick':
         expireTurn(s);
+        break;
+      case 'world':
+        requireHost();
+        updateWorld(s, v);
         break;
       case 'settings': {
         requireHost();

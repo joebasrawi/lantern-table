@@ -141,3 +141,7 @@ The server preserves identity, level, XP, earned health/energy capacity, invento
 ## Find your next turn
 
 The adventure list shows member-specific attention cues for a combat turn, an unanswered party vote, host decisions, pending human-DM work, and proposed abilities. Waiting states distinguish a saved vote or action from something you still need to do. New-event counts reflect the campaign’s explicit Mark read state. The list refreshes every 15 seconds while visible and when returning to the tab; it retains the last successful list during a temporary connection failure. These are in-app status cues, not email or push notifications.
+
+## Revise a campaign’s world
+
+The host can edit the campaign name, world/era and premise under Campaign settings → World and premise. Changes wait until encounters, party decisions and pending actions are resolved. They guide subsequent AI narration and are recorded in shared history, while past events, journal entries, location and character progress are preserved. Members can read these details but cannot edit them.

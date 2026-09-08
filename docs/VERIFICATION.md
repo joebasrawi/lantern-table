@@ -141,3 +141,13 @@ A live-page audit found both font preloads returning 404. Inline font CSS and pr
 The new `tests/font-integration.mjs` reads the page’s actual preload and inline CSS URLs, requires same-origin public asset paths, fetches every emitted font, and checks WOFF2 bytes rather than accepting a fallback HTML response. It reproduced the hosted failure before the fix. Against the existing local production build, both preloads and all 12 font files passed. The font check is now part of the Railway multiplayer runner and therefore remote CI. Lint and the complete multiplayer runner passed locally; the application source and rules were unchanged. Hosted fix verification is pending.
 
 The audit also measured local build artifacts: the main game chunk was about 115 KB before transfer compression and the two artwork files together about 264 KB. These artifact sizes do not establish real-user load time or mobile responsiveness; no general speed claim is made from them.
+
+Font-cache fix deployment `dd6336be-e339-4d01-9a97-3ad5b5271f05` reached SUCCESS. The same font check that failed on the old deployment passed live: both preload URLs and all 12 emitted font assets now use public paths and return WOFF2 bytes. Saved campaign/character/private portrait recovery, origin protection, development-auth rejection and logout passed afterward. GitHub Actions run `34253724566` passed for public commit `e91cc8673626442787b27937c7b75d2e1a8e32dc`, including the new font check. This proves the broken font requests were fixed; it is not a measured real-user speed improvement.
+
+## Editable campaign world — September 8, 2026
+
+Hosts can revise the campaign name, world/era and premise after resolving current play. Validation completes before mutation; unchanged or invalid fields are rejected, and saved location, journal, characters, settings and earlier events are preserved. A shared event records the revision. The existing narration context reads the updated world and premise.
+
+Typecheck, lint, all 73 unit tests, the Railway build, font checks and multiplayer HTTP suite passed. New engine tests verify atomic validation, active-play restrictions, preserved data and updated narration context. HTTP checks verify host-only authorization, unchanged characters/journal, saved return, renamed list entries and rejected edits during a vote.
+
+In a disposable local browser campaign, the host edited all three fields and saved. The settings dialog closed with a success notice and focus returned to Campaign settings. Shared history recorded the revision while the location and member’s 20/20 health stayed unchanged. Reloading and reopening World and premise displayed the saved values. No real campaign was edited. Hosted deployment verification is pending.

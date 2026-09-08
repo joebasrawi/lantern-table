@@ -638,6 +638,29 @@ export function levelUp(s: CampaignState, userId: string, growth: unknown) {
   );
 }
 
+export function updateWorld(s: CampaignState, input: Record<string, unknown>) {
+  if (s.encounter || s.decision || s.pending.length)
+    throw new GameError(
+      'Finish the current encounter, decision, and pending actions before changing the world.',
+    );
+  const title = text(input.title, 'Campaign name', 80);
+  const setting = text(input.setting, 'World and era', 1500);
+  const premise = text(input.premise, 'Premise', 1500);
+  if (title === s.title && setting === s.setting && premise === s.premise)
+    throw new GameError(
+      'Change the campaign name, world, or premise before saving.',
+    );
+  s.title = title;
+  s.setting = setting;
+  s.premise = premise;
+  addEvent(
+    s,
+    'system',
+    'Campaign world',
+    `The host updated ${title}.\nWorld and era: ${setting}\nPremise: ${premise}`,
+  );
+}
+
 export function rebuildCharacter(
   s: CampaignState,
   userId: string,

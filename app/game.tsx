@@ -901,6 +901,17 @@ export default function Game() {
                 }
               }}
             />
+            <WorldEditor
+              campaign={campaign}
+              host={!!host}
+              busy={busy}
+              onSave={async (world) => {
+                if (await post({ op: 'world', ...world })) {
+                  setNotice('Campaign world saved.');
+                  setPanel('');
+                }
+              }}
+            />
             {host && (
               <SceneArtwork
                 campaign={campaign}
@@ -1811,6 +1822,90 @@ function Chat({
     </>
   );
 }
+function WorldEditor({
+  campaign,
+  host,
+  busy,
+  onSave,
+}: {
+  campaign: CampaignView;
+  host: boolean;
+  busy: boolean;
+  onSave: (world: {
+    title: string;
+    setting: string;
+    premise: string;
+  }) => Promise<void>;
+}) {
+  const { state } = campaign;
+  const [title, setTitle] = useState(state.title);
+  const [setting, setSetting] = useState(state.setting);
+  const [premise, setPremise] = useState(state.premise);
+  const blocked = !!(state.encounter || state.decision || state.pending.length);
+  const changed =
+    title.trim() !== state.title ||
+    setting.trim() !== state.setting ||
+    premise.trim() !== state.premise;
+  return (
+    <details>
+      <summary>World and premise</summary>
+      <form
+        onSubmit={async (event) => {
+          event.preventDefault();
+          await onSave({ title, setting, premise });
+        }}
+      >
+        <fieldset disabled={!host || busy || blocked}>
+          <Field label="Campaign name">
+            <input
+              value={title}
+              onChange={(event) => setTitle(event.target.value)}
+              maxLength={80}
+              required
+            />
+          </Field>
+          <Field label="World and era">
+            <textarea
+              value={setting}
+              onChange={(event) => setSetting(event.target.value)}
+              maxLength={1500}
+              rows={3}
+              required
+            />
+          </Field>
+          <Field label="Premise">
+            <textarea
+              value={premise}
+              onChange={(event) => setPremise(event.target.value)}
+              maxLength={1500}
+              rows={3}
+              required
+            />
+          </Field>
+          <p className="muted">
+            These details guide future narration. Existing story events, journal
+            entries, current location, and character progress are preserved.
+          </p>
+          {host && (
+            <button className="primary" disabled={!changed}>
+              Save world
+            </button>
+          )}
+        </fieldset>
+        {blocked && (
+          <p className="muted">
+            Finish the party’s current encounter, decision, and pending actions
+            before changing the world.
+          </p>
+        )}
+        {!host && (
+          <p className="muted">The campaign host can edit these details.</p>
+        )}
+      </form>
+    </details>
+  );
+}
+
 function SettingsPanel({
   campaign,
   host,

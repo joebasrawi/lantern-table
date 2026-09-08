@@ -336,6 +336,28 @@ assert.equal(
   ).status,
   400,
 );
+const newWorld = {
+  op: 'world',
+  title: 'The updated frontier',
+  setting: 'An alternate future',
+  premise: 'Track the missing signal',
+};
+assert.equal((await hostPost('local_2', newWorld)).status, 403);
+const changedWorld = await hostPost('local_1', newWorld);
+assert.equal(changedWorld.status, 200);
+assert.equal(changedWorld.data.state.title, newWorld.title);
+assert.deepEqual(
+  changedWorld.data.state.characters,
+  cancelled.data.state.characters,
+);
+assert.deepEqual(changedWorld.data.state.journal, cancelled.data.state.journal);
+const savedWorld = (await api('local_2', null, `?id=${hostCampaign.id}`)).data;
+assert.equal(savedWorld.state.setting, newWorld.setting);
+assert.equal(savedWorld.state.premise, newWorld.premise);
+assert.equal(
+  (await listFor('local_2')).find((c) => c.id === hostCampaign.id).title,
+  newWorld.title,
+);
 const rebuildRequest = {
   id: hostCampaign.id,
   version: (await api('local_2', null, `?id=${hostCampaign.id}`)).data.version,
@@ -378,6 +400,10 @@ assert.equal(
       stats: buildAfter.stats,
     })
   ).status,
+  400,
+);
+assert.equal(
+  (await hostPost('local_1', { ...newWorld, title: 'Too early' })).status,
   400,
 );
 const queued = await hostPost('local_1', {
