@@ -79,7 +79,7 @@ This is the first playable milestone, not the finished platform. See `docs/PRODU
 
 - Semantic recall and archival beyond the current keyword-based history search, richer AI encounter direction, and expanded custom ability effects beyond the two validated templates.
 - Expanded equipment mechanics and rule content. Generated character portrait previews are available when enabled by the server owner. Character identity, concept, and preset portrait can already be edited.
-- Notifications, simultaneous combat, delegation, and co-hosts; accepted host handoff and character-preserving campaign departure are implemented. the Railway deadline processor is already deployed. DM/rule/voting changes are already staged until current play finishes.
+- Notifications, simultaneous combat, delegation, and co-hosts; accepted host handoff and character-preserving campaign departure are implemented. The Railway deadline processor is already deployed. DM/rule/voting changes are already staged until current play finishes.
 - Broader tactical maps, world map editing, voice/ambience, additional genre artwork.
 - Live verification of self-hosted identity, account deletion, provider choice/local models, broader cost/billing controls and public onboarding. Persistent AI/image request allowances are implemented; they are not dollar budgets.
 - Multi-device browser and accessibility testing before claiming release readiness.
