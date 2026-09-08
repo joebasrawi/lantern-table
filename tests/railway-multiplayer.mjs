@@ -48,6 +48,7 @@ try {
         OPENAI_API_KEY: 'test-placeholder-not-a-key',
         LANTERN_AI_DAILY_LIMIT: '0',
         LANTERN_PORTRAITS_ENABLED: 'true',
+        LANTERN_SCENES_ENABLED: 'true',
         LANTERN_PORTRAIT_DAILY_LIMIT: '0',
       },
       stdio: ['ignore', 'ignore', 'inherit'],

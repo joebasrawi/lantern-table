@@ -142,6 +142,29 @@ console.log(
 );
 
 if (process.env.TEST_PORTRAIT_PAUSED === 'true') {
+  const sceneCall = async (cookie, origin = base) =>
+    fetch(`${base}/api/scene/generate?campaign=${id}`, {
+      method: 'POST',
+      headers: { Origin: origin, ...(cookie ? { Cookie: cookie } : {}) },
+    });
+  assert.equal((await sceneCall(null)).status, 401);
+  assert.equal(
+    (await sceneCall(cookies.local_1, 'https://foreign.example')).status,
+    403,
+  );
+  assert.equal((await sceneCall(cookies.local_3)).status, 404);
+  assert.equal((await sceneCall(cookies.local_2)).status, 403);
+  const sceneBefore = await get('local_1');
+  assert.equal(sceneBefore.sceneGenerationEnabled, true);
+  assert.equal((await get('local_2')).sceneGenerationEnabled, false);
+  const sceneResponse = await sceneCall(cookies.local_1);
+  assert.equal(sceneResponse.status, 429);
+  assert.match((await sceneResponse.json()).error, /paused/);
+  assert.deepEqual((await get('local_1')).state, sceneBefore.state);
+  console.log(
+    'PASS: scene generation host-only access, origin protection and shared paused allowance preserve state',
+  );
+
   const portraitCall = async (cookie, origin = base) =>
     fetch(`${base}/api/portrait/generate?campaign=${id}`, {
       method: 'POST',

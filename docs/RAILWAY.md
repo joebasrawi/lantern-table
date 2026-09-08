@@ -14,7 +14,7 @@ Configure these Railway service variables:
 - `OPENAI_API_KEY`: a runtime secret, never a Docker build argument
 - `OPENAI_MODEL=gpt-5.4-mini` or another supported OpenAI text model
 - `LANTERN_AI_DAILY_LIMIT=100` for the shared UTC-day narration allowance; 0 pauses AI narration
-- Optional portrait previews: `LANTERN_PORTRAITS_ENABLED=true`, `LANTERN_PORTRAIT_DAILY_LIMIT=10`, and `OPENAI_IMAGE_MODEL=gpt-image-1-mini`
+- Optional portrait and scene previews: `LANTERN_PORTRAITS_ENABLED=true`, `LANTERN_SCENES_ENABLED=true`, `LANTERN_PORTRAIT_DAILY_LIMIT=10`, and `OPENAI_IMAGE_MODEL=gpt-image-1-mini`
 - `LANTERN_BACKGROUND_TURNS=true` to enable the one-minute deadline worker
 
 Deploy with the Railway CLI from this directory. Use `railway up --detach`, then check the returned deployment until healthy. See [Railway CLI deployment](https://docs.railway.com/cli/deploying) and [persistent volumes](https://docs.railway.com/guides/volumes).
@@ -74,6 +74,6 @@ Signup email requests are limited to three per email per 15 minutes and twenty g
 
 ## Portrait generation and campaign membership
 
-Portrait previews use a separate image request allowance and the same runtime OpenAI credential. Generation is disabled unless explicitly enabled. Preview/save behavior, supported output parameters, timeout limits and billing boundaries are documented in the [README](../README.md#generated-character-portraits). Failed or discarded generations can still consume provider usage.
+Portrait and scene previews share a separate image request allowance and the same runtime OpenAI credential. Generation is disabled unless explicitly enabled. Preview/save behavior, supported output parameters, timeout limits and billing boundaries are documented in the [README](../README.md#generated-character-portraits). Failed or discarded generations can still consume provider usage.
 
 Accepted host handoffs change permissions and rotate campaign invitations in a single saved update. Members can leave and later restore their archived character with a valid invitation; hosts must hand off first. Departure retains history and archived character data in SQLite. Archived characters are omitted from normal views and user-facing exports, including host exports. Back up the full volume to preserve all accounts, sessions, memberships, archives and private image files; the JSON campaign export alone is not a full server backup.

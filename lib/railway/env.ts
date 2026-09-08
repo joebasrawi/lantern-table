@@ -4,6 +4,9 @@ export const env = {
   get OPENAI_IMAGE_MODEL() {
     return process.env.OPENAI_IMAGE_MODEL;
   },
+  get LANTERN_SCENES_ENABLED() {
+    return process.env.LANTERN_SCENES_ENABLED;
+  },
   get LANTERN_PORTRAITS_ENABLED() {
     return process.env.LANTERN_PORTRAITS_ENABLED;
   },

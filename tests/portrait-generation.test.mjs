@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
   portraitPrompt,
+  scenePrompt,
   imageDailyLimit,
   reservePortrait,
   generatePortraitImage,
@@ -51,6 +52,7 @@ await test('portrait generation uses one compressed image and rejects failed or 
       assert.equal(url, 'https://api.openai.com/v1/images/generations');
       const body = JSON.parse(opts.body);
       assert.equal(body.n, 1);
+      assert.equal(body.size, '1024x1024');
       assert.equal(body.output_format, 'jpeg');
       assert.equal(body.output_compression, 65);
       return Response.json({
@@ -83,6 +85,43 @@ await test('portrait generation uses one compressed image and rejects failed or 
     ),
     /too large/,
   );
+});
+await test('scene prompt is bounded to public world and location, excluding notes and story', () => {
+  const state = initialState(
+    'Title',
+    'A lunar city',
+    'SECRET plot',
+    'Dock 7',
+    DEFAULT_SETTINGS,
+  );
+  state.dmNotes = 'SECRET DM notes';
+  const prompt = scenePrompt(state.setting, state.location);
+  assert.match(prompt, /lunar city/);
+  assert.match(prompt, /Dock 7/);
+  assert.ok(!prompt.includes('SECRET'));
+  assert.ok(scenePrompt('x'.repeat(5000), 'y'.repeat(5000)).length < 2300);
+});
+await test('scene generation requests one compressed landscape through the bounded image path', async () => {
+  const header = Uint8Array.from([
+    255, 216, 255, 192, 0, 17, 8, 4, 0, 6, 0, 3, 1, 17, 0, 2, 17, 0, 3, 17, 0,
+    255, 217, 0,
+  ]);
+  const data = await generatePortraitImage(
+    'test',
+    'gpt-image-1-mini',
+    'Scene',
+    async (_url, opts) => {
+      const body = JSON.parse(opts.body);
+      assert.equal(body.size, '1536x1024');
+      assert.equal(body.n, 1);
+      assert.equal(body.output_format, 'jpeg');
+      return Response.json({
+        data: [{ b64_json: Buffer.from(header).toString('base64') }],
+      });
+    },
+    '1536x1024',
+  );
+  assert.deepEqual(new Uint8Array(data), header);
 });
 await test('portrait locks prevent simultaneous account requests and persistent daily reservations count failures', async () => {
   try {

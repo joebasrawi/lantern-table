@@ -2998,7 +2998,7 @@ function ProfileEditor({
         </button>
       )}
       {generationEnabled && (
-        <GeneratedPortrait
+        <GeneratedArtwork
           campaignId={campaignId}
           upload={upload}
           busy={busy}
@@ -3145,6 +3145,15 @@ function SceneArtwork({
         WebP up to 512 KB and 2048 pixels per side. Only campaign members can
         view it.
       </p>
+      {campaign.sceneGenerationEnabled && (
+        <GeneratedArtwork
+          key={`${campaign.state.setting}:${campaign.state.location}`}
+          kind="scene"
+          campaignId={campaign.id}
+          upload={upload}
+          busy={busy}
+        />
+      )}
       <Field label="Scene image">
         <input
           type="file"
@@ -3566,16 +3575,18 @@ function LeaveCampaign({
   );
 }
 
-function GeneratedPortrait({
+function GeneratedArtwork({
   campaignId,
   upload,
   busy,
-  profileDirty,
+  profileDirty = false,
+  kind = 'portrait',
 }: {
+  kind?: 'portrait' | 'scene';
   campaignId: string;
   upload: (file: File) => Promise<boolean>;
   busy: boolean;
-  profileDirty: boolean;
+  profileDirty?: boolean;
 }) {
   const [generating, setGenerating] = useState(false);
   const [preview, setPreview] = useState<{ url: string; file: File } | null>(
@@ -3600,12 +3611,12 @@ function GeneratedPortrait({
     controller.current = new AbortController();
     try {
       const response = await fetch(
-        `/api/portrait/generate?campaign=${encodeURIComponent(campaignId)}`,
+        `/api/${kind}/generate?campaign=${encodeURIComponent(campaignId)}`,
         { method: 'POST', signal: controller.current.signal },
       );
       if (!response.ok) {
         const body = (await response.json()) as { error?: string };
-        throw new Error(body.error || 'Portrait generation failed.');
+        throw new Error(body.error || 'Image generation failed.');
       }
       const blob = await response.blob();
       if (!alive.current) return;
@@ -3614,7 +3625,7 @@ function GeneratedPortrait({
       previewUrl.current = url;
       setPreview({
         url,
-        file: new File([blob], 'generated-portrait.jpg', {
+        file: new File([blob], `generated-${kind}.jpg`, {
           type: 'image/jpeg',
         }),
       });
@@ -3626,9 +3637,13 @@ function GeneratedPortrait({
   }
   return (
     <details>
-      <summary>Generate character artwork</summary>
+      <summary>
+        Generate {kind === 'scene' ? 'scene' : 'character'} artwork
+      </summary>
       <p className="muted">
-        Create a portrait from your saved appearance, character type, and world.
+        {kind === 'scene'
+          ? 'Create a landscape from the saved world and current location. Save any world edits before generating.'
+          : 'Create a portrait from your saved appearance, character type, and world.'}
         Your current artwork stays until you choose to use the preview.
         Generation uses the server’s separate image allowance.
       </p>
@@ -3638,13 +3653,13 @@ function GeneratedPortrait({
         disabled={busy || generating || profileDirty}
         onClick={generate}
       >
-        {generating ? 'Creating portrait…' : 'Generate preview'}
+        {generating ? 'Creating artwork…' : 'Generate preview'}
       </button>
       {generating && (
         <p>
           <output>
-            Keep this panel open while the portrait is created. Other players
-            can keep playing.
+            Keep this panel open while the artwork is created. Other players can
+            keep playing.
           </output>
         </p>
       )}
@@ -3653,8 +3668,12 @@ function GeneratedPortrait({
         <>
           <img
             src={preview.url}
-            alt="Generated character portrait preview"
-            width={256}
+            alt={
+              kind === 'scene'
+                ? 'Generated scene preview'
+                : 'Generated character portrait preview'
+            }
+            width={kind === 'scene' ? 384 : 256}
             height={256}
             style={{
               maxWidth: '100%',
@@ -3677,7 +3696,7 @@ function GeneratedPortrait({
               }
             }}
           >
-            Use generated portrait
+            Use generated {kind}
           </button>
         </>
       )}

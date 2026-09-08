@@ -8,6 +8,7 @@ declare namespace Cloudflare {
     OPENAI_MODEL?: string;
     OPENAI_IMAGE_MODEL?: string;
     LANTERN_PORTRAITS_ENABLED?: string;
+    LANTERN_SCENES_ENABLED?: string;
     LANTERN_PORTRAIT_DAILY_LIMIT?: string;
     LANTERN_AI_DAILY_LIMIT?: string;
   }

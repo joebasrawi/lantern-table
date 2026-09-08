@@ -2,6 +2,7 @@ import { env } from 'cloudflare:workers';
 import {
   generatePortraitImage,
   portraitPrompt,
+  scenePrompt,
   reservePortrait,
   imageDailyLimit,
 } from './portrait-generation';
@@ -96,6 +97,10 @@ export async function view(id: string, user: User): Promise<CampaignView> {
     .bind(id)
     .all<{ userId: string; name: string }>();
   return {
+    sceneGenerationEnabled:
+      env.LANTERN_SCENES_ENABLED === 'true' &&
+      !!env.OPENAI_API_KEY &&
+      row.host_id === user.id,
     portraitGenerationEnabled:
       env.LANTERN_PORTRAITS_ENABLED === 'true' && !!env.OPENAI_API_KEY,
     id: row.id,
@@ -835,6 +840,47 @@ export async function generateCharacterPortrait(user: User, id: string) {
       )
     )
       throw new GameError('This character is no longer active.', 409);
+    return data;
+  } finally {
+    await release();
+  }
+}
+
+export async function generateSceneArtwork(user: User, id: string) {
+  const row = await rowFor(id, user);
+  if (row.host_id !== user.id)
+    throw new GameError('Only the host can generate scene artwork.', 403);
+  if (env.LANTERN_SCENES_ENABLED !== 'true' || !env.OPENAI_API_KEY)
+    throw new GameError(
+      'Scene generation is not enabled on this server. You can upload artwork.',
+      503,
+    );
+  const s = JSON.parse(row.state) as CampaignState;
+  const release = await reservePortrait(
+    database(),
+    user.id,
+    imageDailyLimit(env.LANTERN_PORTRAIT_DAILY_LIMIT),
+  );
+  try {
+    const data = await generatePortraitImage(
+      env.OPENAI_API_KEY,
+      env.OPENAI_IMAGE_MODEL || 'gpt-image-1-mini',
+      scenePrompt(s.setting, s.location),
+      fetch,
+      '1536x1024',
+    );
+    const current = await rowFor(id, user);
+    if (current.host_id !== user.id)
+      throw new GameError(
+        'Only the current host can receive this scene preview.',
+        403,
+      );
+    const state = JSON.parse(current.state) as CampaignState;
+    if (state.setting !== s.setting || state.location !== s.location)
+      throw new GameError(
+        'The world or location changed. Generate a preview for the current scene.',
+        409,
+      );
     return data;
   } finally {
     await release();

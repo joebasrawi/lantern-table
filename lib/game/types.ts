@@ -150,6 +150,7 @@ export type CampaignState = {
 };
 export type CampaignView = {
   portraitGenerationEnabled?: boolean;
+  sceneGenerationEnabled?: boolean;
   id: string;
   hostId: string;
   version: number;
