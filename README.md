@@ -69,7 +69,7 @@ Lint covers authored application, rules, persistence, test, and configuration co
 
 ## Hosting and open-source status
 
-MIT-licensed source is included here. The current private deployment runs on Railway with its own accounts, persistent SQLite and private image storage; see [Railway setup](docs/RAILWAY.md). Password changes are live. Email recovery and optional verified-email registration are implemented but need a configured sender and live delivery verification. The initial hosted preview uses Sites, D1 and Sign in with ChatGPT. Site access policy applies before campaign invitations: a private Site invitation does not itself grant a friend access to the Site. A standalone Workers build with verified Cloudflare Access identity is available; see [self-hosting](docs/SELF_HOSTING.md). Its live custom-domain sign-in has not been tested. Wider-audience deployment is not complete.
+MIT-licensed source is published at [joebasrawi/lantern-table](https://github.com/joebasrawi/lantern-table). The current private deployment runs on Railway with its own accounts, persistent SQLite and private image storage; see [Railway setup](docs/RAILWAY.md). Password changes are live. Email recovery and optional verified-email registration are implemented but need a configured sender and live delivery verification. The initial hosted preview uses Sites, D1 and Sign in with ChatGPT. Site access policy applies before campaign invitations: a private Site invitation does not itself grant a friend access to the Site. A standalone Workers build with verified Cloudflare Access identity is available; see [self-hosting](docs/SELF_HOSTING.md). Its live custom-domain sign-in has not been tested. Wider-audience deployment is not complete.
 
 ## Still to build
 
