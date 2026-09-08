@@ -465,6 +465,49 @@ console.log(
   'PASS: scheduling edits apply during a decision, rule handoff waits and persists after resolution',
 );
 
+const enemyStats = { hp: 37, armor: 17, attackBonus: 6, damage: 9 };
+assert.equal(
+  (
+    await hostPost('local_2', {
+      op: 'dm',
+      kind: 'encounter',
+      name: 'Sentinel',
+      count: 2,
+      enemyStats,
+    })
+  ).status,
+  403,
+);
+assert.equal(
+  (
+    await hostPost('local_1', {
+      op: 'dm',
+      kind: 'encounter',
+      name: 'Sentinel',
+      count: 2,
+      enemyStats: { ...enemyStats, damage: 999 },
+    })
+  ).status,
+  400,
+);
+const customEncounter = await hostPost('local_1', {
+  op: 'dm',
+  kind: 'encounter',
+  name: 'Sentinel',
+  count: 2,
+  enemyStats,
+});
+assert.equal(customEncounter.status, 200);
+const savedEnemies = (await api('local_2', null, `?id=${hostCampaign.id}`)).data
+  .state.encounter.enemies;
+assert.equal(savedEnemies.length, 2);
+for (const enemy of savedEnemies)
+  for (const [key, value] of Object.entries(enemyStats))
+    assert.equal(enemy[key], value);
+console.log(
+  'PASS: host-controlled enemy values, validation and persistent shared encounter',
+);
+
 if (credentials) {
   const nextPassword = 'test-only-' + crypto.randomUUID();
   const changed = await fetch(base + '/api/auth?password', {

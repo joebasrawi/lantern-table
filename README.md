@@ -34,7 +34,7 @@ AI credentials belong in an ignored `.env.local` file. The development launcher 
 
 These are original rules, not a D&D 5e implementation. Quickplay uses a fixed +2 check modifier and no range restrictions. Tactical uses six attributes, attribute modifiers plus +2 training, weapon range, positioning, armor, and limited energy. The standard array is 15, 14, 13, 12, 10, 8. Four roles alter health, armor, and range. Rolls and resource changes are server-controlled.
 
-A normal attack deals 5 damage; a power deals 8 for 1 energy. A natural 20 doubles damage. Defending adds 3 armor for the enemy phase. Healing kits restore up to 8 health and are consumed. Movement covers up to three tiles and spends the turn. Each surviving enemy makes a +3 attack for 4 damage during its phase. Enemy automation is intentionally simple in this first build. Completing combat awards 25 XP to each character. At 100 cumulative XP you can advance to level 2, at 300 to level 3, then 600 to level 4 (threshold: 50 × current level × (current level + 1)). The level cap is 10. Between resolved actions, a conscious character can choose +4 maximum health or +1 maximum energy in Abilities. Current resources stay unchanged until recovery; XP is cumulative and is not spent.
+A normal attack deals 5 damage; a power deals 8 for 1 energy. A natural 20 doubles damage. Defending adds 3 armor for the enemy phase. Healing kits restore up to 8 health and are consumed. Movement covers up to three tiles and spends the turn. By default, each surviving enemy makes a +3 attack for 4 damage during its phase. Hosts can customize enemy combat values when starting an encounter. Enemy automation is intentionally simple in this first build. Completing combat awards 25 XP to each character. At 100 cumulative XP you can advance to level 2, at 300 to level 3, then 600 to level 4 (threshold: 50 × current level × (current level + 1)). The level cap is 10. Between resolved actions, a conscious character can choose +4 maximum health or +1 maximum energy in Abilities. Current resources stay unchanged until recovery; XP is cumulative and is not spent.
 
 ## Architecture
 
@@ -149,3 +149,9 @@ The host can edit the campaign name, world/era and premise under Campaign settin
 ## Hosting without a player character
 
 A human or assisted DM can create a campaign and begin guiding it without making a player character. Adventure provides a direct DM Desk button, while Create character remains optional. Hosts without characters can use Party chat; their messages show a DM label in human/assisted mode or a Host label in AI mode. Membership checks still protect chat, and player actions still require a character. Chat stays outside the AI narration context.
+
+## Custom enemy encounters
+
+In DM Desk → Run an encounter, expand Enemy combat values. Hosts can set health (1–500), armor (1–30), attack bonus (−5 to +15), and damage per hit (1–50). Values apply to every enemy in that encounter and cannot be edited during combat. Use standard values restores 12 health, 12 armor, +3 attack and 4 damage. Selected targets show their combat values to the party.
+
+AI-proposed encounters retain the standard values. Existing saved enemies without the new fields use the original +3 attack and 4 damage. Victory still awards 25 XP per character; custom difficulty is not automatically balanced or scored. Enemy target selection and movement remain the existing simple automation.

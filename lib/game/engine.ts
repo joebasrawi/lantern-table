@@ -1,5 +1,7 @@
 import {
   DEFAULT_SETTINGS,
+  DEFAULT_ENEMY_STATS,
+  type EnemyStats,
   MAX_LEVEL,
   nextLevelXp,
   ROLES,
@@ -228,7 +230,40 @@ export function check(
     description: `d20 ${d} + ${bonus} = ${d + bonus}`,
   };
 }
-export function startEncounter(s: CampaignState, name: string, count: number) {
+export function enemyStats(input: unknown): EnemyStats {
+  if (
+    input !== undefined &&
+    (!input || typeof input !== 'object' || Array.isArray(input))
+  )
+    throw new GameError('Enemy values must be an object.');
+  const values = input as Partial<EnemyStats> | undefined;
+  const limits = {
+    hp: [1, 500],
+    armor: [1, 30],
+    attackBonus: [-5, 15],
+    damage: [1, 50],
+  } as const;
+  const result = { ...DEFAULT_ENEMY_STATS };
+  for (const key of Object.keys(limits) as (keyof EnemyStats)[]) {
+    const value = values?.[key] ?? DEFAULT_ENEMY_STATS[key];
+    const [min, max] = limits[key];
+    if (!Number.isInteger(value) || value < min || value > max)
+      throw new GameError(
+        `Enemy ${key} must be a whole number from ${min} to ${max}.`,
+      );
+    result[key] = value;
+  }
+  return result;
+}
+export function startEncounter(
+  s: CampaignState,
+  name: string,
+  count: number,
+  input?: unknown,
+) {
+  const stats = enemyStats(input);
+  if (!Number.isInteger(count) || count < 1 || count > 6)
+    throw new GameError('Choose 1 to 6 enemies.');
   if (s.encounter) throw new GameError('An encounter is already running.');
   const chars = s.characters.filter((c) => c.hp > 0);
   if (!chars.length) throw new GameError('Create a character first.');
@@ -241,9 +276,11 @@ export function startEncounter(s: CampaignState, name: string, count: number) {
     enemies: Array.from({ length: count }, (_, i) => ({
       id: uid(),
       name: count > 1 ? `${name} ${i + 1}` : name,
-      hp: 12,
-      maxHp: 12,
-      armor: 12,
+      hp: stats.hp,
+      maxHp: stats.hp,
+      armor: stats.armor,
+      attackBonus: stats.attackBonus,
+      damage: stats.damage,
       x: (i % 4) * 2,
       y: 1 + Math.floor(i / 4),
     })),
@@ -267,14 +304,16 @@ function advance(s: CampaignState, roll: () => number) {
       const target = s.characters.filter((x) => x.hp > 0)[0];
       if (!target) break;
       const d = roll();
+      const bonus = enemy.attackBonus ?? DEFAULT_ENEMY_STATS.attackBonus;
+      const damage = enemy.damage ?? DEFAULT_ENEMY_STATS.damage;
       const hit =
-        d + 3 >= target.armor + (e.defending.includes(target.id) ? 3 : 0);
-      if (hit) target.hp = Math.max(0, target.hp - 4);
+        d + bonus >= target.armor + (e.defending.includes(target.id) ? 3 : 0);
+      if (hit) target.hp = Math.max(0, target.hp - damage);
       addEvent(
         s,
         'roll',
         enemy.name,
-        `${d} + 3 vs ${target.armor + (e.defending.includes(target.id) ? 3 : 0)} armor. ${hit ? `${target.name} takes 4 damage.` : 'Miss.'}`,
+        `${d} ${bonus >= 0 ? '+' : '−'} ${Math.abs(bonus)} vs ${target.armor + (e.defending.includes(target.id) ? 3 : 0)} armor. ${hit ? `${target.name} takes ${damage} damage.` : 'Miss.'}`,
       );
     }
     e.defending = [];

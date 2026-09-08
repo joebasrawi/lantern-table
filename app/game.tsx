@@ -38,6 +38,7 @@ import {
 } from 'lucide-react';
 import {
   DEFAULT_SETTINGS,
+  DEFAULT_ENEMY_STATS,
   ABILITY_EFFECTS,
   MAX_LEVEL,
   nextLevelXp,
@@ -2148,7 +2149,7 @@ function Encounter({
       <p className="muted">
         {move
           ? 'Choose a free tile within 3 spaces. Moving uses your turn.'
-          : `Target: ${selected?.name || 'none'} · ${selected?.hp || 0} health. Select an enemy to change target.`}
+          : `Target: ${selected?.name || 'none'} · ${selected?.hp || 0} health · ${selected?.armor || 0} armor · attack ${selected && (selected.attackBonus ?? 3) >= 0 ? '+' : ''}${selected?.attackBonus ?? 3} · ${selected?.damage ?? 4} damage. Select an enemy to change target.`}
       </p>
       <div className="combat-actions">
         <button
@@ -2272,6 +2273,7 @@ function DMDesk({
   const [notes, setNotes] = useState(campaign.state.dmNotes);
   const [enemy, setEnemy] = useState('Harbor raider');
   const [count, setCount] = useState(2);
+  const [enemyStats, setEnemyStats] = useState({ ...DEFAULT_ENEMY_STATS });
   const [location, setLocation] = useState('');
   const [journalTitle, setJournalTitle] = useState('');
   const [journalBody, setJournalBody] = useState('');
@@ -2523,7 +2525,13 @@ function DMDesk({
             <form
               onSubmit={(e) => {
                 e.preventDefault();
-                void post({ op: 'dm', kind: 'encounter', name: enemy, count });
+                void post({
+                  op: 'dm',
+                  kind: 'encounter',
+                  name: enemy,
+                  count,
+                  enemyStats,
+                });
               }}
             >
               <Field label="Enemy name">
@@ -2543,6 +2551,45 @@ function DMDesk({
                   onChange={(e) => setCount(Number(e.target.value))}
                 />
               </Field>
+              <details>
+                <summary>Enemy combat values</summary>
+                {(
+                  [
+                    ['hp', 'Health per enemy', 1, 500],
+                    ['armor', 'Enemy armor', 1, 30],
+                    ['attackBonus', 'Enemy attack bonus', -5, 15],
+                    ['damage', 'Damage per hit', 1, 50],
+                  ] as const
+                ).map(([key, label, min, max]) => (
+                  <Field key={key} label={label}>
+                    <input
+                      type="number"
+                      min={min}
+                      max={max}
+                      step={1}
+                      required
+                      value={enemyStats[key]}
+                      onChange={(event) =>
+                        setEnemyStats({
+                          ...enemyStats,
+                          [key]: Number(event.target.value),
+                        })
+                      }
+                    />
+                  </Field>
+                ))}
+                <p className="muted">
+                  These values apply to every enemy in this encounter. They stay
+                  fixed once combat begins. Victory still awards 25 XP per
+                  character.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setEnemyStats({ ...DEFAULT_ENEMY_STATS })}
+                >
+                  Use standard values
+                </button>
+              </details>
               <button disabled={busy || !!campaign.state.encounter}>
                 <Swords size={16} />
                 Start encounter

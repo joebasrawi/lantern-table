@@ -76,6 +76,13 @@ export type Journal = {
   body: string;
   completed: boolean;
 };
+export const DEFAULT_ENEMY_STATS = {
+  hp: 12,
+  armor: 12,
+  attackBonus: 3,
+  damage: 4,
+};
+export type EnemyStats = typeof DEFAULT_ENEMY_STATS;
 export type Enemy = {
   id: string;
   name: string;
@@ -84,6 +91,8 @@ export type Enemy = {
   armor: number;
   x: number;
   y: number;
+  attackBonus?: number;
+  damage?: number;
 };
 export type Encounter = {
   round: number;

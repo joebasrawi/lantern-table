@@ -442,7 +442,12 @@ export async function mutate(user: User, v: Record<string, unknown>) {
           const count = Number(v.count);
           if (!Number.isInteger(count) || count < 1 || count > 6)
             throw new GameError('Choose 1 to 6 enemies.');
-          startEncounter(s, text(v.name, 'Enemy name', 60), count);
+          startEncounter(
+            s,
+            text(v.name, 'Enemy name', 60),
+            count,
+            v.enemyStats,
+          );
         } else if (kind === 'location') {
           if (s.encounter || s.decision || s.pending.length)
             throw new GameError('Finish pending play before moving the party.');
