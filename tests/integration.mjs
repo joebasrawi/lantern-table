@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { createECDH, randomBytes } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 const base = process.env.TEST_ORIGIN || 'http://localhost:3000';
 const credentials = process.env.TEST_ACCOUNTS_FILE
@@ -34,6 +35,85 @@ async function api(user, data, query = '') {
   return { status: r.status, data: await r.json() };
 }
 for (const user of ['local_1', 'local_2', 'local_3']) await signIn(user);
+if (process.env.TEST_PUSH === 'true') {
+  const push = (user, body, origin = base) =>
+    fetch(base + '/api/notifications', {
+      method: body ? 'POST' : 'GET',
+      headers: {
+        Origin: origin,
+        'Content-Type': 'application/json',
+        ...(user ? { Cookie: cookies[user] } : {}),
+      },
+      ...(body ? { body: JSON.stringify(body) } : {}),
+    });
+  assert.equal((await push(null)).status, 401);
+  const config = await push('local_1');
+  assert.equal(config.headers.get('cache-control'), 'no-store');
+  assert.deepEqual(await config.json(), {
+    enabled: true,
+    publicKey: 'test-public-key',
+  });
+  const pair = createECDH('prime256v1');
+  pair.generateKeys();
+  const subscription = {
+    endpoint: 'https://fcm.googleapis.com/fcm/send/disposable-http-test',
+    keys: {
+      p256dh: pair.getPublicKey().toString('base64url'),
+      auth: randomBytes(16).toString('base64url'),
+    },
+  };
+  assert.equal(
+    (
+      await push(
+        'local_1',
+        { op: 'subscribe', subscription },
+        'https://foreign.example',
+      )
+    ).status,
+    403,
+  );
+  assert.equal(
+    (await push('local_1', { op: 'subscribe', subscription })).status,
+    200,
+  );
+  assert.equal(
+    (await push('local_2', { op: 'subscribe', subscription })).status,
+    409,
+  );
+  assert.deepEqual(
+    await (
+      await push('local_2', { op: 'status', endpoint: subscription.endpoint })
+    ).json(),
+    { active: false },
+  );
+  await push('local_2', { op: 'remove', endpoint: subscription.endpoint });
+  assert.deepEqual(
+    await (
+      await push('local_1', { op: 'status', endpoint: subscription.endpoint })
+    ).json(),
+    { active: true },
+  );
+  assert.equal(
+    (
+      await push('local_1', {
+        op: 'subscribe',
+        subscription: { ...subscription, endpoint: 'http://localhost/private' },
+      })
+    ).status,
+    400,
+  );
+  await push('local_1', { op: 'remove', endpoint: subscription.endpoint });
+  assert.deepEqual(
+    await (
+      await push('local_1', { op: 'status', endpoint: subscription.endpoint })
+    ).json(),
+    { active: false },
+  );
+  console.log(
+    'Authenticated push subscription ownership, origin, validation and revocation passed (no delivery).',
+  );
+}
+
 const opts = {
   dm: 'human',
   rules: 'quickplay',

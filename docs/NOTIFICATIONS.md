@@ -1,7 +1,8 @@
 # Browser turn notifications — implementation in progress
 
-Notifications are not yet available in the hosted game. No subscription endpoint,
-permission prompt, service worker, delivery provider or scheduled sender is enabled.
+Notifications are not yet available in the hosted game. An authenticated Railway
+subscription API is implemented in source; no browser permission prompt, service
+worker, delivery provider or scheduled sender is enabled.
 The Railway application continues to use in-app attention cues. This work does not
 require signup email delivery or purchasing a domain.
 
@@ -16,9 +17,8 @@ an alert. Cues and labels contain no campaign title, story, chat, character name
 private notes.
 
 `lib/railway/notification-queue.ts` defines an opt-in subscription table and durable
-outbox. These tables are not created in the running application yet. A future
-registration handler must authenticate the user, validate the subscription and
-insert it explicitly. The queue only selects subscribed campaign members who have
+outbox. The subscription API creates these tables when used. Registration is disabled
+unless the operator explicitly enables push and configures both VAPID keys. The queue only selects subscribed campaign members who have
 an actionable cue. Ordinary saves preserve the existing delivery status. Resolved
 work disappears; a different cue replaces an old item and invalidates its delivery
 claim. Malformed campaign state cannot send an alert or block healthy campaigns.
@@ -38,12 +38,18 @@ resolves the turn. Opening the game must always load current authorized state.
 
 ## Required next integration
 
-1. Add an authenticated, same-origin, size-limited subscription API with browser
-   ownership, subscription-count limits, unsubscribe and validated push-service
-   endpoints. Never accept arbitrary destinations for server-side requests.
+1. Subscription API implemented: authenticated GET configuration and POST
+   subscribe/status/remove, exact Origin checks, a streamed 4 KiB body limit,
+   valid P-256 keys, supported HTTPS provider destinations, eight browsers per
+   account and no cross-account takeover. Removal still works with push disabled.
+   Destination support is currently Google FCM, Mozilla production push and Apple
+   push subdomains. Unsupported providers fail closed. No provider requests occur
+   during registration. Integrate this API with explicit browser opt-in.
 2. Add explicit per-browser opt-in. Request permission only from the user's action;
    explain unsupported or denied permission and allow unsubscribing. Handle a shared
    browser switching accounts without retaining another account's subscription.
+   Logout/session revocation must be integrated before enabling delivery; the
+   subscription table currently binds to accounts, not individual login sessions.
 3. Configure persistent VAPID keys privately, encrypt provider payloads with the
    established Web Push library, and handle invalid subscriptions and retryable
    provider failures. Do not log endpoint secrets or private keys.
@@ -59,3 +65,12 @@ Nine focused tests cover cue identity/privacy, role visibility, deduplication,
 committed-state rechecks, cascading revocation, lease recovery, stale responses,
 bounded retries, corrupted-state isolation and independent database connections.
 These tests prove the queue behavior, not end-to-end browser delivery.
+
+Five additional unit tests verify subscription key/endpoint validation, ownership,
+limits, request controls and deletion races. The Railway multiplayer HTTP suite
+exercises the real route with independent login cookies, registration, status,
+foreign-origin rejection, cross-account takeover/removal rejection and unsubscribe.
+These are API tests with disposable subscriptions; they do not send push messages.
+
+Provider references: [Mozilla push endpoints](https://mozilla-services.github.io/autopush-rs/)
+and [Apple Web Push](https://developer.apple.com/documentation/usernotifications/sending-web-push-notifications-in-web-apps-and-browsers).

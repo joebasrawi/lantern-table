@@ -297,3 +297,8 @@ A browser host deleted a disposable solo campaign (`fabab277-3143-4545-abbd-f5f4
 Added stable, private-content-free turn/decision/DM cue identities and a Railway SQLite outbox with membership and current-state rechecks, delivery leases, stale-response protection, bounded retries and cascading revocation. Nine focused tests exercise these behaviors, including independent database connections. The browser opt-in API, service worker, provider delivery and scheduled integration are still missing; no hosted notifications are sent. See [NOTIFICATIONS.md](NOTIFICATIONS.md) for the remaining integration and evidence requirements.
 
 Local validation: all 112 unit tests, TypeScript and lint passed for this change. No browser-delivery test or production deployment is claimed.
+
+
+## Browser subscription API (not enabled on production)
+
+The Railway `/api/notifications` route now authenticates the player and supports configuration, subscribe, status and remove. Registration validates HTTPS push destinations and P-256 encryption keys, requires exact Origin and bounded JSON, limits each account to eight subscriptions, and rejects cross-account takeover. Revocation remains usable when delivery is disabled. Five new unit tests and the production-build HTTP multiplayer suite verify ownership, body/origin controls, deletion races and actual authenticated route behavior. All 117 unit tests, local typecheck/lint, Railway build, HTTP multiplayer and font checks passed. No provider message was sent. Browser UI, session/logout revocation and scheduled delivery remain unfinished; deployment and actual browser delivery are not claimed.

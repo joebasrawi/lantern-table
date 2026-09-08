@@ -69,6 +69,14 @@ export default defineConfig(async ({ command }) => {
             import.meta.url,
           ),
         ),
+        '#platform-notifications': fileURLToPath(
+          new URL(
+            railway
+              ? './lib/railway/notifications.ts'
+              : './lib/railway/notifications-disabled.ts',
+            import.meta.url,
+          ),
+        ),
         '#platform-auth': fileURLToPath(
           new URL(
             railway
