@@ -2152,10 +2152,21 @@ function Encounter({
     (c) => c.id === e.order[e.index],
   );
   const [target, setTarget] = useState('');
+  const [allyTarget, setAllyTarget] = useState('');
   const [move, setMove] = useState(false);
   const mine = me?.id === active?.id;
   const living = e.enemies.filter((n) => n.hp > 0);
   const selected = living.find((n) => n.id === target) || living[0];
+  const guardAllies = campaign.state.characters.filter(
+    (c) =>
+      c.id !== me?.id &&
+      c.hp > 0 &&
+      !e.defending.includes(c.id) &&
+      (campaign.state.settings.rules !== 'tactical' ||
+        (me && Math.abs(me.x - c.x) + Math.abs(me.y - c.y) <= 3)),
+  );
+  const selectedAlly =
+    guardAllies.find((c) => c.id === allyTarget) || guardAllies[0];
   const expired = !!e.deadline;
   return (
     <section className="encounter">
@@ -2172,6 +2183,7 @@ function Encounter({
           return c ? (
             <span className={active?.id === id ? 'active' : ''} key={id}>
               {c.name} · {c.hp} HP
+              {e.defending.includes(c.id) ? ' · +3 armor' : ''}
             </span>
           ) : null;
         })}
@@ -2258,6 +2270,29 @@ function Encounter({
           Heal
         </button>
       </div>
+      {!!me?.abilities?.some((a) => a.approved && a.effect === 'guard') && (
+        <Field label="Protect a teammate">
+          <select
+            value={selectedAlly?.id || ''}
+            onChange={(event) => setAllyTarget(event.target.value)}
+            disabled={!mine || busy || !guardAllies.length}
+          >
+            {!guardAllies.length && (
+              <option value="">
+                No eligible teammate
+                {campaign.state.settings.rules === 'tactical'
+                  ? ' within 3 spaces'
+                  : ''}
+              </option>
+            )}
+            {guardAllies.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name} · {c.hp}/{c.maxHp} health
+              </option>
+            ))}
+          </select>
+        </Field>
+      )}
       {!!me?.abilities?.some((a) => a.approved) && (
         <div className="combat-actions" aria-label="Custom abilities">
           {me.abilities
@@ -2269,7 +2304,8 @@ function Encounter({
                   !mine ||
                   busy ||
                   !me.energy ||
-                  (a.effect === 'mend' && me.hp >= me.maxHp)
+                  (a.effect === 'mend' && me.hp >= me.maxHp) ||
+                  (a.effect === 'guard' && !selectedAlly)
                 }
                 title={ABILITY_EFFECTS[a.effect]}
                 onClick={() =>
@@ -2277,7 +2313,8 @@ function Encounter({
                     op: 'combat',
                     action: 'ability',
                     abilityId: a.id,
-                    target: selected?.id,
+                    target:
+                      a.effect === 'guard' ? selectedAlly?.id : selected?.id,
                   })
                 }
               >
@@ -2996,7 +3033,7 @@ function CustomAbilities({
 }) {
   const [name, setName] = useState(''),
     [description, setDescription] = useState(''),
-    [effect, setEffect] = useState<'strike' | 'mend'>('strike');
+    [effect, setEffect] = useState<keyof typeof ABILITY_EFFECTS>('strike');
   return (
     <section>
       {(c.abilities || []).map((a) => (
@@ -3051,10 +3088,15 @@ function CustomAbilities({
             <Field label="Game effect">
               <select
                 value={effect}
-                onChange={(e) => setEffect(e.target.value as 'strike' | 'mend')}
+                onChange={(e) =>
+                  setEffect(e.target.value as keyof typeof ABILITY_EFFECTS)
+                }
               >
                 <option value="strike">Strike · 8 damage, 1 energy</option>
                 <option value="mend">Mend · recover 6 health, 1 energy</option>
+                <option value="guard">
+                  Guard · protect a teammate, 1 energy
+                </option>
               </select>
             </Field>
             <p className="muted">

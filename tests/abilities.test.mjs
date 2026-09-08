@@ -141,3 +141,130 @@ await test('creation policy, three-slot limit, editing locks and removal preserv
   assert.equal(c.hp, c.maxHp);
   assert.equal(c.energy, 3);
 });
+
+await test('guard protects an ally during the enemy phase, then expires without changing base armor', () => {
+  const s = game(),
+    [ally, caster] = s.characters;
+  proposeAbility(s, caster.userId, {
+    name: 'Drone barrier',
+    description: 'A drone projects cover.',
+    effect: 'guard',
+  });
+  const ability = caster.abilities[0];
+  reviewAbility(s, caster.id, ability.id, true);
+  startEncounter(s, 'Guardian', 1);
+  const armor = ally.armor,
+    health = ally.hp;
+  const enemyRoll = () => armor - 3;
+  combat(s, ally.userId, 'move', undefined, ally.x, ally.y, enemyRoll);
+  combat(
+    s,
+    caster.userId,
+    'ability',
+    ally.id,
+    undefined,
+    undefined,
+    enemyRoll,
+    ability.id,
+  );
+  assert.equal(caster.energy, 2);
+  assert.equal(ally.hp, health, 'Guard converts a base-armor hit into a miss');
+  assert.equal(ally.armor, armor);
+  assert.equal(s.encounter.round, 2);
+  assert.deepEqual(s.encounter.defending, []);
+  assert.ok(s.events.some((e) => e.text.includes(`protects ${ally.name}`)));
+  combat(s, ally.userId, 'move', undefined, ally.x, ally.y, enemyRoll);
+  combat(s, caster.userId, 'move', undefined, caster.x, caster.y, enemyRoll);
+  assert.equal(
+    ally.hp,
+    health - 4,
+    'Protection expires before the following enemy phase',
+  );
+});
+
+await test('guard rejects invalid targets, range, energy and stacked protection without spending the turn', () => {
+  for (const mode of [
+    'self',
+    'enemy',
+    'down',
+    'range',
+    'energy',
+    'stack',
+    'unapproved',
+  ]) {
+    const s = game(),
+      [caster, ally] = s.characters;
+    s.settings.rules = 'tactical';
+    proposeAbility(s, caster.userId, {
+      name: 'Ward',
+      description: 'A shield.',
+      effect: 'guard',
+    });
+    const ability = caster.abilities[0];
+    if (mode !== 'unapproved') reviewAbility(s, caster.id, ability.id, true);
+    startEncounter(s, 'Guardian', 1);
+    let target = ally.id;
+    if (mode === 'self') target = caster.id;
+    if (mode === 'enemy') target = s.encounter.enemies[0].id;
+    if (mode === 'down') ally.hp = 0;
+    if (mode === 'range') {
+      ally.x = 7;
+      ally.y = 0;
+    }
+    if (mode === 'energy') caster.energy = 0;
+    if (mode === 'stack') s.encounter.defending.push(ally.id);
+    const before = structuredClone(s);
+    assert.throws(
+      () =>
+        combat(
+          s,
+          caster.userId,
+          'ability',
+          target,
+          undefined,
+          undefined,
+          () => 10,
+          ability.id,
+        ),
+      undefined,
+      mode,
+    );
+    assert.deepEqual(s, before, mode);
+  }
+});
+
+await test('guard supports Tactical range boundary and Quickplay distance; Defend does not stack', () => {
+  for (const rules of ['tactical', 'quickplay']) {
+    const s = game(),
+      [caster, ally] = s.characters;
+    s.settings.rules = rules;
+    proposeAbility(s, caster.userId, {
+      name: 'Ward',
+      description: 'A shield.',
+      effect: 'guard',
+    });
+    const ability = caster.abilities[0];
+    reviewAbility(s, caster.id, ability.id, true);
+    startEncounter(s, 'Guardian', 1);
+    caster.x = 0;
+    caster.y = 7;
+    ally.x = rules === 'tactical' ? 3 : 7;
+    ally.y = 7;
+    combat(
+      s,
+      caster.userId,
+      'ability',
+      ally.id,
+      undefined,
+      undefined,
+      () => 1,
+      ability.id,
+    );
+    assert.deepEqual(s.encounter.defending, [ally.id]);
+    assert.equal(s.encounter.index, 1);
+    assert.equal(caster.energy, 2);
+    combat(s, ally.userId, 'defend', undefined, undefined, undefined, () => 1);
+    assert.deepEqual(s.encounter.defending, []);
+    assert.equal(ally.energy, 3);
+  }
+});

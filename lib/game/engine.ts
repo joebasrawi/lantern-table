@@ -361,7 +361,30 @@ export function combat(
   if (action === 'ability' && !ability)
     throw new GameError('Choose one of your approved abilities.');
   if (ability?.effect === 'strike') action = 'power';
-  if (ability?.effect === 'mend') {
+  if (ability?.effect === 'guard') {
+    const ally = s.characters.find(
+      (t) => t.id === targetId && t.id !== c.id && t.hp > 0,
+    );
+    if (!ally)
+      throw new GameError('Choose another conscious party member to protect.');
+    if (c.energy < 1) throw new GameError('You have no energy left.');
+    if (e.defending.includes(ally.id))
+      throw new GameError('That character already has +3 armor this round.');
+    if (
+      s.settings.rules === 'tactical' &&
+      Math.abs(c.x - ally.x) + Math.abs(c.y - ally.y) > 3
+    )
+      throw new GameError('Move within 3 spaces of your ally first.');
+    c.energy--;
+    e.defending.push(ally.id);
+    addEvent(
+      s,
+      'action',
+      c.name,
+      `${ability.name}: protects ${ally.name}. +3 armor through the next enemy phase for 1 energy.`,
+      userId,
+    );
+  } else if (ability?.effect === 'mend') {
     if (c.energy < 1) throw new GameError('You have no energy left.');
     if (c.hp >= c.maxHp) throw new GameError('You are already at full health.');
     const healed = Math.min(6, c.maxHp - c.hp);
@@ -407,7 +430,7 @@ export function combat(
       userId,
     );
   } else if (action === 'defend') {
-    e.defending.push(c.id);
+    if (!e.defending.includes(c.id)) e.defending.push(c.id);
     addEvent(
       s,
       'action',
@@ -771,7 +794,7 @@ export function proposeAbility(
     description = text(v.description, 'Ability description', 300);
   const effect = choice(
     v.effect,
-    ['strike', 'mend'] as const,
+    ['strike', 'mend', 'guard'] as const,
     'ability effect',
   );
   if (c.abilities?.some((a) => a.name.toLowerCase() === name.toLowerCase()))

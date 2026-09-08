@@ -26,13 +26,15 @@ export type CustomAbility = {
   id: string;
   name: string;
   description: string;
-  effect: 'strike' | 'mend';
+  effect: 'strike' | 'mend' | 'guard';
   approved: boolean;
 };
 export const ABILITY_EFFECTS = {
   strike:
     'Attack for 8 damage using your role’s range and attack roll. Costs 1 energy.',
   mend: 'Recover up to 6 of your own health. Costs 1 energy.',
+  guard:
+    'Give another conscious party member +3 armor through the next enemy phase. Range 3 in Tactical; any distance in Quickplay. Does not stack with Defend. Costs 1 energy and your turn.',
 };
 export type Character = {
   id: string;

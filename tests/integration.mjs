@@ -893,6 +893,109 @@ console.log(
   'PASS: confirmed departure revokes access, hides archived character, waits for shared play, and concurrent rejoin restores one unchanged build with a free position',
 );
 
+// A separately persisted support encounter validates the real session/API path.
+{
+  const created = await api('local_1', {
+    op: 'create',
+    title: 'Guard support test',
+    setting: 'Future',
+    premise: 'Protect the crew',
+    location: 'Station',
+    settings: { ...opts, customization: 'custom', rules: 'tactical' },
+  });
+  assert.equal(created.status, 200);
+  const guardId = created.data.id;
+  const guardGet = async (who) => (await api(who, null, `?id=${guardId}`)).data;
+  const guardPost = async (who, data) =>
+    api(who, {
+      id: guardId,
+      version: (await guardGet(who)).version,
+      requestId: crypto.randomUUID(),
+      ...data,
+    });
+  assert.equal(
+    (await api('local_2', { op: 'join', invite: created.data.invite })).status,
+    200,
+  );
+  for (const who of ['local_1', 'local_2'])
+    assert.equal(
+      (await guardPost(who, { op: 'character', ...p, name: who })).status,
+      200,
+    );
+  assert.equal(
+    (
+      await guardPost('local_1', {
+        op: 'proposeAbility',
+        name: 'Drone barrier',
+        description: 'A small drone projects cover.',
+        effect: 'guard',
+        approved: true,
+      })
+    ).status,
+    200,
+  );
+  const proposed = await guardGet('local_1');
+  const caster = proposed.state.characters[0],
+    ally = proposed.state.characters[1],
+    ability = caster.abilities[0];
+  assert.equal(ability.approved, false);
+  const review = {
+    op: 'reviewAbility',
+    characterId: caster.id,
+    abilityId: ability.id,
+    approve: true,
+  };
+  assert.equal((await guardPost('local_2', review)).status, 403);
+  assert.equal((await guardPost('local_1', review)).status, 200);
+  assert.equal(
+    (
+      await guardPost('local_1', {
+        op: 'dm',
+        kind: 'encounter',
+        name: 'Guardian',
+        count: 1,
+      })
+    ).status,
+    200,
+  );
+  const before = await guardGet('local_1');
+  const payload = {
+    id: guardId,
+    version: before.version,
+    requestId: crypto.randomUUID(),
+    op: 'combat',
+    action: 'ability',
+    abilityId: ability.id,
+    target: ally.id,
+  };
+  assert.equal(
+    (
+      await api('local_1', {
+        ...payload,
+        requestId: crypto.randomUUID(),
+        target: caster.id,
+      })
+    ).status,
+    400,
+  );
+  assert.deepEqual((await guardGet('local_1')).state, before.state);
+  assert.equal((await api('local_1', payload)).status, 200);
+  assert.equal((await api('local_1', payload)).status, 200);
+  const saved = await guardGet('local_2');
+  assert.equal(saved.state.characters[0].energy, caster.energy - 1);
+  assert.deepEqual(saved.state.encounter.defending, [ally.id]);
+  assert.equal(saved.state.characters[1].armor, ally.armor);
+  assert.equal(saved.state.encounter.index, 1);
+  assert.equal(
+    saved.state.events.filter((e) => e.text.startsWith('Drone barrier:'))
+      .length,
+    1,
+  );
+  console.log(
+    'PASS: Guard host approval, invalid-target rollback, one-time energy spend and shared persisted protection',
+  );
+}
+
 if (credentials) {
   const nextPassword = 'test-only-' + crypto.randomUUID();
   const changed = await fetch(base + '/api/auth?password', {
