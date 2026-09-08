@@ -28,6 +28,7 @@ import {
   applyQueuedSettings,
   choice,
 } from './engine';
+import { campaignAttention } from './attention';
 import { narrate } from './narrator';
 import { draftIsCurrent } from './draft';
 import { applyNarration } from './dm-output';
@@ -44,10 +45,10 @@ type Row = {
 export async function list(user: User) {
   const rows = await database()
     .prepare(
-      'SELECT c.id,c.state,c.updated_at FROM campaigns c JOIN members m ON m.campaign_id=c.id WHERE m.user_id=? ORDER BY c.updated_at DESC',
+      'SELECT c.id,c.state,c.host_id,c.updated_at FROM campaigns c JOIN members m ON m.campaign_id=c.id WHERE m.user_id=? ORDER BY c.updated_at DESC',
     )
     .bind(user.id)
-    .all<{ id: string; state: string; updated_at: string }>();
+    .all<{ id: string; state: string; host_id: string; updated_at: string }>();
   return rows.results.map((r) => {
     const s = JSON.parse(r.state) as CampaignState;
     return {
@@ -57,6 +58,7 @@ export async function list(user: User) {
       setting: s.setting,
       dm: s.settings.dm,
       players: s.characters.length,
+      attention: campaignAttention(s, user.id, r.host_id === user.id),
       updatedAt: r.updated_at,
       unread: s.events.filter(
         (e) => e.kind !== 'chat' && e.at > (s.seen[user.id] || ''),

@@ -137,3 +137,7 @@ Scene and portrait objects share private R2 storage with separate key prefixes. 
 In your character’s Abilities tab, open “Change role and attributes.” Choose a role and reassign the six standard scores; picking a score swaps it with the attribute currently using it. The preview shows health and armor after saving. Build changes are available only outside encounters, party decisions, and pending actions, and unconscious characters must recover first.
 
 The server preserves identity, level, XP, earned health/energy capacity, inventory and approved abilities. A role change adjusts base health and armor, and existing combat rules use the new role’s attack attribute and range. It never restores current health or energy. Health above a lower maximum is lost and changing back does not restore it. The change appears in shared campaign history and persists on return. Equipment descriptions are retained; new gear is not granted when switching roles.
+
+## Find your next turn
+
+The adventure list shows member-specific attention cues for a combat turn, an unanswered party vote, host decisions, pending human-DM work, and proposed abilities. Waiting states distinguish a saved vote or action from something you still need to do. New-event counts reflect the campaign’s explicit Mark read state. The list refreshes every 15 seconds while visible and when returning to the tab; it retains the last successful list during a temporary connection failure. These are in-app status cues, not email or push notifications.

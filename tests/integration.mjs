@@ -116,6 +116,21 @@ const payload = {
 const first = await api('local_1', payload);
 assert.equal(first.status, 200);
 assert.equal(first.data.state.pending.length, 1);
+const listFor = async (user) => (await api(user, null)).data;
+const hostSummary = (await listFor('local_1')).find((c) => c.id === id);
+assert.equal(hostSummary.attention.label, 'Resolve player actions');
+assert.equal(hostSummary.attention.needsAction, true);
+assert.ok(hostSummary.unread > 0);
+assert.doesNotMatch(
+  JSON.stringify(hostSummary),
+  /HOST PLAYER PRIVATE|DM SECRET|Inspect the letter/,
+);
+assert.equal(hostSummary.state, undefined);
+assert.equal(hostSummary.invite, undefined);
+assert.equal(
+  (await listFor('local_3')).some((c) => c.id === id),
+  false,
+);
 const repeat = await api('local_1', payload);
 assert.equal(repeat.status, 200);
 assert.equal(repeat.data.state.events.length, first.data.state.events.length);
@@ -144,6 +159,14 @@ await post('local_1', {
 const d = (await get('local_1')).state.decision;
 await post('local_1', { op: 'vote', decisionId: d.id, option: 0 });
 assert.ok((await get('local_2')).state.decision);
+assert.equal(
+  (await listFor('local_1')).find((c) => c.id === id).attention.needsAction,
+  false,
+);
+assert.equal(
+  (await listFor('local_2')).find((c) => c.id === id).attention.label,
+  'Your vote is needed',
+);
 await post('local_2', { op: 'vote', decisionId: d.id, option: 0 });
 assert.equal((await get('local_1')).state.decision, null);
 await post('local_1', {
@@ -153,6 +176,14 @@ await post('local_1', {
   count: 1,
 });
 a = await get('local_1');
+assert.equal(
+  (await listFor('local_1')).find((c) => c.id === id).attention.label,
+  'Your combat turn',
+);
+assert.equal(
+  (await listFor('local_2')).find((c) => c.id === id).attention.needsAction,
+  false,
+);
 const actingId = a.state.characters.find(
   (c) => c.id === a.state.encounter.order[0],
 ).userId;

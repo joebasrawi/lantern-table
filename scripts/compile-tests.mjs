@@ -3,6 +3,7 @@ import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 mkdirSync('.test-build', { recursive: true });
 for (const name of [
   'types',
+  'attention',
   'engine',
   'dm-output',
   'portrait',

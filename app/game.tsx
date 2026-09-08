@@ -11,6 +11,7 @@ import {
   type SyntheticEvent,
   type ReactNode,
 } from 'react';
+import type { CampaignAttention } from '../lib/game/attention';
 import { useActionDraft } from '../lib/action-drafts';
 import { Dialog } from '@base-ui/react/dialog';
 import {
@@ -61,6 +62,7 @@ type Summary = {
   players: number;
   updatedAt: string;
   unread: number;
+  attention: CampaignAttention;
 };
 type Tab = 'Adventure' | 'Journal' | 'Map' | 'DM Desk';
 type Post = (data: Record<string, unknown>) => Promise<boolean>;
@@ -237,6 +239,33 @@ export default function Game() {
       active = false;
     };
   }, []);
+  useEffect(() => {
+    if (!user || campaign) return;
+    let active = true;
+    let refreshing = false;
+    const refresh = async () => {
+      if (refreshing || document.visibilityState === 'hidden') return;
+      refreshing = true;
+      try {
+        const next = await request<Summary[]>();
+        if (active) setCampaigns(next);
+      } catch {
+        // Keep the last successful list during a temporary connection failure.
+      } finally {
+        refreshing = false;
+      }
+    };
+    const interval = setInterval(() => void refresh(), 15000);
+    const onFocus = () => void refresh();
+    window.addEventListener('focus', onFocus);
+    document.addEventListener('visibilitychange', onFocus);
+    return () => {
+      active = false;
+      clearInterval(interval);
+      window.removeEventListener('focus', onFocus);
+      document.removeEventListener('visibilitychange', onFocus);
+    };
+  }, [user, campaign]);
   useEffect(() => {
     if (!campaign?.id) return;
     let active = true;
@@ -508,6 +537,20 @@ export default function Game() {
                         <div>
                           <h2>{c.title}</h2>
                           <p>{c.location}</p>
+                          <p>
+                            {c.attention?.needsAction ? (
+                              <strong>{c.attention.label}</strong>
+                            ) : (
+                              c.attention?.label
+                            )}
+                            {c.unread > 0 && (
+                              <>
+                                {' '}
+                                · {c.unread} new{' '}
+                                {c.unread === 1 ? 'event' : 'events'}
+                              </>
+                            )}
+                          </p>
                           <span className="muted">
                             {c.players}{' '}
                             {c.players === 1 ? 'character' : 'characters'} ·{' '}
