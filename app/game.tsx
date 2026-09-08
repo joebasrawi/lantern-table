@@ -418,6 +418,7 @@ export default function Game() {
   const me = campaign?.state.characters.find((c) => c.userId === user?.id);
   const host = campaign?.hostId === user?.id;
   const guiding = host && campaign?.state.settings.dm !== 'ai';
+  const activeTab = tab === 'DM Desk' && !host ? 'Adventure' : tab;
   if (loading)
     return (
       <main className="loading">
@@ -614,7 +615,7 @@ export default function Game() {
               ).map((t) => (
                 <button
                   key={t}
-                  aria-current={tab === t ? 'page' : undefined}
+                  aria-current={activeTab === t ? 'page' : undefined}
                   onClick={() => setTab(t)}
                 >
                   {t}
@@ -642,7 +643,7 @@ export default function Game() {
             </div>
           </header>
           <main>
-            {tab === 'Adventure' && (
+            {activeTab === 'Adventure' && (
               <>
                 <div
                   className={`scene ${campaign.state.sceneUrl || campaign.state.setting.toLowerCase().includes('fantasy') ? 'harbor' : 'other-world'}`}
@@ -689,6 +690,14 @@ export default function Game() {
                         }}
                       >
                         Mark read
+                      </button>
+                    </p>
+                  )}
+                  {user && campaign.state.hostOffer?.to === user.id && (
+                    <p className="waiting">
+                      You’ve been invited to host this campaign.{' '}
+                      <button onClick={() => setPanel('settings')}>
+                        Review handoff
                       </button>
                     </p>
                   )}
@@ -761,10 +770,10 @@ export default function Game() {
                 </div>
               </>
             )}
-            {tab === 'Journal' && (
+            {activeTab === 'Journal' && (
               <JournalView campaign={campaign} host={!!host} post={post} />
             )}
-            {tab === 'Map' && (
+            {activeTab === 'Map' && (
               <div className="secondary-page">
                 <div className="page-heading">
                   <div>
@@ -801,7 +810,7 @@ export default function Game() {
                 </p>
               </div>
             )}
-            {tab === 'DM Desk' && host && (
+            {activeTab === 'DM Desk' && host && (
               <DMDesk
                 campaign={campaign}
                 post={post}
@@ -938,6 +947,12 @@ export default function Game() {
                 post={post}
               />
             )}
+            <HostHandoff
+              campaign={campaign}
+              userId={user?.id || ''}
+              post={post}
+              busy={busy}
+            />
             <div className="settings-footer">
               {host && (
                 <button onClick={copyInvite}>
@@ -3249,5 +3264,147 @@ function InventoryEditor({
         </>
       )}
     </>
+  );
+}
+
+function HostHandoff({
+  campaign,
+  userId,
+  post,
+  busy,
+}: {
+  campaign: CampaignView;
+  userId: string;
+  post: Post;
+  busy: boolean;
+}) {
+  const [target, setTarget] = useState('');
+  const [confirmed, setConfirmed] = useState(false);
+  const [message, setMessage] = useState('');
+  const host = campaign.hostId === userId;
+  const offer = campaign.state.hostOffer;
+  const nominated = offer?.to === userId;
+  const blocked = !!(
+    campaign.state.encounter ||
+    campaign.state.decision ||
+    campaign.state.pending.length
+  );
+  const name =
+    campaign.members.find((m) => m.userId === offer?.to)?.name ||
+    'The nominated member';
+  return (
+    <details>
+      <summary>Campaign host</summary>
+      <p>
+        {campaign.members.find((m) => m.userId === campaign.hostId)?.name ||
+          'The host'}{' '}
+        currently manages this campaign.
+      </p>
+      <p className="muted">
+        The new host gains campaign controls, DM notes, and player notes shared
+        with the DM. Personal notes remain private. Both people keep their
+        characters. Accepting replaces the invitation link and removes the
+        previous host’s DM access.
+      </p>
+      {message && (
+        <p>
+          <output>{message}</output>
+        </p>
+      )}
+      {offer ? (
+        <>
+          <p>{name} has been invited to take over.</p>
+          {(host || nominated) && (
+            <button
+              disabled={busy}
+              onClick={async () => {
+                if (await post({ op: 'hostHandoff', kind: 'cancel' })) {
+                  setConfirmed(false);
+                  setMessage('Handoff canceled.');
+                }
+              }}
+            >
+              {nominated ? 'Decline handoff' : 'Cancel handoff'}
+            </button>
+          )}
+          {nominated && (
+            <form
+              onSubmit={async (e) => {
+                e.preventDefault();
+                if (
+                  confirmed &&
+                  (await post({ op: 'hostHandoff', kind: 'accept' }))
+                ) {
+                  setConfirmed(false);
+                  setMessage(
+                    'You are now the campaign host. Copy a new invitation link for future members.',
+                  );
+                }
+              }}
+            >
+              <label>
+                <input
+                  type="checkbox"
+                  checked={confirmed}
+                  onChange={(e) => setConfirmed(e.target.checked)}
+                  disabled={busy || blocked}
+                />{' '}
+                I agree to take over campaign and DM access.
+              </label>
+              <button disabled={busy || blocked || !confirmed}>
+                Accept host role
+              </button>
+            </form>
+          )}
+        </>
+      ) : (
+        host && (
+          <form
+            onSubmit={async (e) => {
+              e.preventDefault();
+              if (
+                await post({
+                  op: 'hostHandoff',
+                  kind: 'offer',
+                  targetId: target,
+                })
+              ) {
+                setTarget('');
+                setMessage(
+                  'Handoff offered. You remain host until they accept.',
+                );
+              }
+            }}
+          >
+            <Field label="Next campaign host">
+              <select
+                value={target}
+                onChange={(e) => setTarget(e.target.value)}
+                disabled={busy || blocked}
+                required
+              >
+                <option value="">Choose an existing member</option>
+                {campaign.members
+                  .filter((m) => m.userId !== userId)
+                  .map((m) => (
+                    <option key={m.userId} value={m.userId}>
+                      {m.name}
+                    </option>
+                  ))}
+              </select>
+            </Field>
+            <button disabled={busy || blocked || !target}>
+              Offer host role
+            </button>
+          </form>
+        )
+      )}
+      {blocked && (host || nominated) && (
+        <p className="muted">
+          Offering or accepting waits until all current encounters, decisions,
+          and pending actions are resolved. You can still cancel an offer.
+        </p>
+      )}
+    </details>
   );
 }

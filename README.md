@@ -171,3 +171,12 @@ This is a request-count safeguard, not a dollar budget, billing system, token le
 Open Character → Inventory to select an item and give it to another conscious party member. The campaign host can open any character’s Inventory → Manage equipment as DM to grant or remove items, including without owning a player character. Equipment changes wait until encounters, decisions, and pending player actions are resolved. Every change is saved in shared history. Transfers move one existing item and cannot mint copies through retries; only the owner can give their items. A character can carry up to 24 items with names up to 80 characters.
 
 The exact item name `Healing kit` retains its combat effect: consume one to restore up to 8 health. Custom gear names are descriptive; they do not change weapon damage, range, armor, or attributes. There is no pricing, weight, equipment-slot, or custom item-effect system yet. Current inventory is included in bounded AI narration context; the AI cannot grant or consume items directly.
+
+
+### Handing a campaign to another host
+
+Under Campaign settings → Campaign host, the current host can nominate an existing member. The nominee sees a campaign-list attention cue and a Review handoff prompt in Adventure. Only the nominee can accept; either person can cancel or decline. Offering and accepting wait for encounters, decisions, and pending actions to finish. The original host stays in charge until acceptance.
+
+Acceptance changes host authority and replaces the invitation token in the same saved campaign update. The previous link becomes invalid; the new host can copy a replacement. Both members and their characters remain. Campaign DM notes and player notes shared with the DM become available to the new host; personal character notes remain visible only to their owner. The former host loses privileged API access immediately; open screens reflect the change when refreshed. A former host viewing DM Desk falls back to Adventure after the next state refresh. In-flight assisted drafts recheck current host authority before returning.
+
+This supports a cooperative handoff, not automatic takeover from an unreachable owner. Leaving a campaign and deleting accounts remain separate work.

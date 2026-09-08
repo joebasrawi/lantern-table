@@ -920,3 +920,65 @@ export function changeInventory(
     actorId,
   );
 }
+
+export function hostHandoff(
+  s: CampaignState,
+  actorId: string,
+  currentHost: string,
+  members: { userId: string; name: string }[],
+  v: Record<string, unknown>,
+): string | null {
+  const kind = choice(
+    v.kind,
+    ['offer', 'accept', 'cancel'] as const,
+    'host handoff',
+  );
+  const offer = s.hostOffer;
+  if (kind === 'cancel') {
+    if (!offer || (actorId !== currentHost && actorId !== offer.to))
+      throw new GameError(
+        'Only the host or nominated member can cancel this handoff.',
+        403,
+      );
+    delete s.hostOffer;
+    addEvent(s, 'system', 'Campaign', 'The host handoff was canceled.');
+    return null;
+  }
+  if (kind === 'offer' && actorId !== currentHost)
+    throw new GameError('Only the current host can offer a handoff.', 403);
+  if (
+    kind === 'accept' &&
+    (!offer || offer.to !== actorId || offer.from !== currentHost)
+  )
+    throw new GameError('This host handoff is not available to you.', 403);
+  if (s.encounter || s.decision || s.pending.length)
+    throw new GameError(
+      'Hand off the campaign after the current encounter, decision, or pending actions.',
+    );
+  const targetId = kind === 'offer' ? v.targetId : actorId;
+  const target = members.find((m) => m.userId === targetId);
+  if (!target || target.userId === currentHost)
+    throw new GameError('Choose another current campaign member.');
+  if (kind === 'offer') {
+    if (offer)
+      throw new GameError(
+        'Cancel the current handoff before nominating someone else.',
+      );
+    s.hostOffer = { from: currentHost, to: target.userId };
+    addEvent(
+      s,
+      'system',
+      'Campaign',
+      `${target.name} has been invited to become the campaign host.`,
+    );
+    return null;
+  }
+  delete s.hostOffer;
+  addEvent(
+    s,
+    'system',
+    'Campaign',
+    `${target.name} accepted the campaign host role. The previous invitation link has been replaced.`,
+  );
+  return target.userId;
+}

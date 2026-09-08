@@ -605,6 +605,126 @@ console.log(
   'PASS: host-controlled enemy values, validation and persistent shared encounter',
 );
 
+const handoffCampaign = (
+  await api('local_1', {
+    op: 'create',
+    title: 'Host handoff test',
+    setting: 'Fantasy',
+    premise: 'Keep the story going',
+    location: 'Harbor',
+    settings: opts,
+  })
+).data;
+await api('local_2', { op: 'join', invite: handoffCampaign.invite });
+async function handoffPost(user, body) {
+  const current = (await api(user, null, `?id=${handoffCampaign.id}`)).data;
+  return api(user, {
+    id: handoffCampaign.id,
+    version: current.version,
+    requestId: crypto.randomUUID(),
+    ...body,
+  });
+}
+await handoffPost('local_1', { op: 'character', ...p });
+await handoffPost('local_1', {
+  op: 'notes',
+  notes: 'Handoff personal',
+  dmNotes: 'Handoff shared',
+});
+await handoffPost('local_1', {
+  op: 'dm',
+  kind: 'notes',
+  text: 'Handoff DM secret',
+});
+const nominee = identities.local_2 || 'local_2';
+assert.equal(
+  (
+    await handoffPost('local_2', {
+      op: 'hostHandoff',
+      kind: 'offer',
+      targetId: nominee,
+    })
+  ).status,
+  403,
+);
+assert.equal(
+  (
+    await handoffPost('local_1', {
+      op: 'hostHandoff',
+      kind: 'offer',
+      targetId: 'not-a-member',
+    })
+  ).status,
+  400,
+);
+assert.equal(
+  (
+    await handoffPost('local_1', {
+      op: 'hostHandoff',
+      kind: 'offer',
+      targetId: nominee,
+    })
+  ).status,
+  200,
+);
+const offerView = (await api('local_2', null, `?id=${handoffCampaign.id}`))
+  .data;
+assert.equal(offerView.state.dmNotes, '');
+assert.equal(
+  (await listFor('local_2')).find((c) => c.id === handoffCampaign.id).attention
+    .label,
+  'Host handoff awaiting your reply',
+);
+const acceptance = {
+  op: 'hostHandoff',
+  kind: 'accept',
+  id: handoffCampaign.id,
+  version: offerView.version,
+  requestId: crypto.randomUUID(),
+};
+const accepted = await api('local_2', acceptance);
+assert.equal(accepted.status, 200);
+assert.equal(accepted.data.hostId, nominee);
+assert.notEqual(accepted.data.invite, handoffCampaign.invite);
+assert.equal(accepted.data.state.dmNotes, 'Handoff DM secret');
+assert.equal(accepted.data.state.characters[0].notes, '');
+assert.equal(accepted.data.state.characters[0].dmNotes, 'Handoff shared');
+assert.equal(
+  (await api('local_2', acceptance)).data.invite,
+  accepted.data.invite,
+);
+const former = (await api('local_1', null, `?id=${handoffCampaign.id}`)).data;
+assert.equal(former.hostId, nominee);
+assert.equal(former.invite, undefined);
+assert.equal(former.state.dmNotes, '');
+assert.equal(former.state.characters[0].notes, 'Handoff personal');
+assert.equal(
+  (await handoffPost('local_1', { op: 'dm', kind: 'notes', text: 'Forbidden' }))
+    .status,
+  403,
+);
+assert.equal(
+  (
+    await handoffPost('local_2', {
+      op: 'dm',
+      kind: 'notes',
+      text: 'New host can guide',
+    })
+  ).status,
+  200,
+);
+assert.equal(
+  (await api('local_3', { op: 'join', invite: handoffCampaign.invite })).status,
+  404,
+);
+assert.equal(
+  (await api('local_3', { op: 'join', invite: accepted.data.invite })).status,
+  200,
+);
+console.log(
+  'PASS: accepted host handoff, immediate privilege and privacy change, invite rotation, idempotency and saved membership',
+);
+
 if (credentials) {
   const nextPassword = 'test-only-' + crypto.randomUUID();
   const changed = await fetch(base + '/api/auth?password', {

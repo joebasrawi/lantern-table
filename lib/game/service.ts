@@ -10,6 +10,7 @@ import {
   levelUp,
   rebuildCharacter,
   changeInventory,
+  hostHandoff,
   check,
   combat,
   deadline,
@@ -161,6 +162,8 @@ export async function mutate(user: User, v: Record<string, unknown>) {
       'Another turn is resolving. Please try again in a moment.',
       409,
     );
+  let nextHost = row.host_id;
+  let nextInvite = row.invite;
   const host = row.host_id === user.id;
   const requireHost = () => {
     if (!host) throw new GameError('Only the campaign host can do that.', 403);
@@ -172,6 +175,26 @@ export async function mutate(user: User, v: Record<string, unknown>) {
   };
   try {
     switch (op) {
+      case 'hostHandoff': {
+        const members = await database()
+          .prepare(
+            'SELECT user_id AS userId,name FROM members WHERE campaign_id=?',
+          )
+          .bind(id)
+          .all<{ userId: string; name: string }>();
+        const accepted = hostHandoff(
+          s,
+          user.id,
+          row.host_id,
+          members.results,
+          v,
+        );
+        if (accepted) {
+          nextHost = accepted;
+          nextInvite = uid();
+        }
+        break;
+      }
       case 'character': {
         if (s.characters.some((c) => c.userId === user.id))
           throw new GameError('You already have a character.');
@@ -513,9 +536,17 @@ export async function mutate(user: User, v: Record<string, unknown>) {
       s.receipts = Object.fromEntries(receipts.slice(-200));
     const saved = await database()
       .prepare(
-        'UPDATE campaigns SET state=?,version=version+1,updated_at=?,lock=NULL,lock_until=0 WHERE id=? AND version=? AND lock=?',
+        'UPDATE campaigns SET state=?,host_id=?,invite=?,version=version+1,updated_at=?,lock=NULL,lock_until=0 WHERE id=? AND version=? AND lock=?',
       )
-      .bind(JSON.stringify(s), now(), id, row.version, lock)
+      .bind(
+        JSON.stringify(s),
+        nextHost,
+        nextInvite,
+        now(),
+        id,
+        row.version,
+        lock,
+      )
       .run();
     if (saved.meta.changes !== 1)
       throw new GameError(
@@ -545,9 +576,10 @@ export async function draft(user: User, v: Record<string, unknown>) {
   if (!p) throw new GameError('Select a pending action.');
   const action = `${p.author}: ${p.text}`;
   const result = await narrate(s, action, p.roll);
-  const latest = JSON.parse(
-    (await rowFor(row.id, user)).state,
-  ) as CampaignState;
+  const latestRow = await rowFor(row.id, user);
+  if (latestRow.host_id !== user.id)
+    throw new GameError('Only the current host can receive a DM draft.', 403);
+  const latest = JSON.parse(latestRow.state) as CampaignState;
   if (!draftIsCurrent(s, latest, p.id))
     throw new GameError(
       'The story changed while the draft was being written. Review it and request a fresh draft.',

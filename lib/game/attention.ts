@@ -39,6 +39,8 @@ export function campaignAttention(
     state.characters.some((c) => c.abilities?.some((a) => !a.approved))
   )
     return result('Review proposed abilities', true);
+  if (state.hostOffer?.to === userId)
+    return result('Host handoff awaiting your reply', true);
   if (!character)
     return isHost && state.settings.dm !== 'ai'
       ? result('Ready to guide the adventure')
