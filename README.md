@@ -77,7 +77,7 @@ MIT-licensed source is published at [joebasrawi/lantern-table](https://github.co
 
 This is the first playable milestone, not the finished platform. See `docs/PRODUCT.md` for the complete goal and `docs/VERIFICATION.md` for current evidence and verification gaps.
 
-- Semantic recall and archival beyond the current keyword-based history search, richer AI encounter direction, and expanded custom ability effects beyond the two validated templates.
+- Semantic recall and archival beyond the current keyword-based history search, richer AI encounter direction, and expanded custom ability effects beyond the three validated templates.
 - Expanded equipment mechanics and rule content. Generated character portrait previews are available when enabled by the server owner. Character identity, concept, and preset portrait can already be edited.
 - Notifications, simultaneous combat, delegation, and co-hosts; accepted host handoff and character-preserving campaign departure are implemented. The Railway deadline processor is already deployed. DM/rule/voting changes are already staged until current play finishes.
 - Broader tactical maps, world map editing, voice/ambience, additional genre artwork.
@@ -200,3 +200,8 @@ Character → Profile → Generate character artwork creates a preview from the 
 The server owner enables this with `LANTERN_PORTRAITS_ENABLED=true` and an authorized `OPENAI_API_KEY`. `LANTERN_PORTRAIT_DAILY_LIMIT` defaults to 10 requests per UTC day across the database; 0 pauses generation. It is separate from the dungeon-master request allowance. Failed/discarded generations still count because provider work may be billable. Persistent per-account leases prevent overlapping requests; requests time out after 90 seconds and leases expire after two minutes. This is a count limit, not a dollar budget. A lost response is not resumable and a new attempt can incur another request.
 
 `OPENAI_IMAGE_MODEL` defaults to `gpt-image-1-mini`; the implementation requests one 1024×1024 medium-quality JPEG with compression 65 and rejects images over the existing 512 KB limit. This follows the [OpenAI image-generation API](https://developers.openai.com/api/docs/guides/image-generation) and uses the [GPT Image 1 Mini model](https://developers.openai.com/api/docs/models/gpt-image-1-mini). Other configured models must support those parameters. Generation is disabled by default in the open-source configuration. Generated scene artwork and queued background image jobs are not implemented.
+
+
+## In-game rules guide
+
+“How to play” beside Character and Party chat opens a compact reference for the campaign’s active rules, DM mode, turn schedule and voting policy. Expandable sections cover combat actions and ranges, asynchronous return, consent for absence actions, recovery, equipment, growth and the three approved ability effects. The guide follows live settings; queued settings are identified without describing them as active. It is a reference for Lantern Table’s original rules, not a full D&D/5e manual.

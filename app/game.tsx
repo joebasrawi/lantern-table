@@ -1,4 +1,5 @@
 'use client';
+import { RulesGuide } from './rules-guide';
 // Auth endpoints are dispatch-owned and require full top-level navigation.
 /* oxlint-disable next/no-html-link-for-pages */
 // These static images are already WebP-compressed (122 KB and 142 KB); no image server is needed.
@@ -790,6 +791,10 @@ export default function Game() {
                       <MessageCircle size={17} />
                       Party chat
                     </button>
+                    <button onClick={() => setPanel('rules')}>
+                      <BookOpen size={17} />
+                      How to play
+                    </button>
                     <span>Progress saves automatically</span>
                   </footer>
                 </div>
@@ -880,6 +885,13 @@ export default function Game() {
       </Modal>
       {campaign && (
         <>
+          <Modal
+            open={panel === 'rules'}
+            onClose={() => setPanel('')}
+            title="How to play"
+          >
+            <RulesGuide campaign={campaign} />
+          </Modal>
           <Modal
             open={panel === 'builder'}
             onClose={() => setPanel('')}
