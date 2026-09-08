@@ -183,3 +183,10 @@ Hosts can set bounded health, armor, attack bonus and damage when creating encou
 Typecheck, lint, all 76 unit tests, the Railway build, font checks and multiplayer HTTP suite passed. New unit checks cover actual custom damage, negative bonuses and misses, legacy defaults, invalid bounds/types/counts and atomic rejection. The HTTP suite verifies host permission, invalid-stat rejection and shared persistent values. An initial integration-test ordering error was corrected before the successful rerun; no application workaround was needed.
 
 In a disposable local browser campaign, the host expanded Enemy combat values, set two Clockwork sentinels to 37 health, 17 armor, +6 attack and 9 damage, and started the encounter. Adventure showed both enemies with 37 health and the selected target’s complete configured values. The host had no player character and could not take the player’s combat turn. No real campaign was changed. Hosted deployment verification is pending.
+
+Custom-enemy deployment `b23e801e-7b74-4d4c-9682-bf492122c82a` reached SUCCESS. GitHub Actions run `34266308319` passed for public commit `e03110f1828a8f22b907619b4fbef0c87b589eb8`. Hosted font assets, saved campaign/character/private portrait recovery, origin protection, development-auth rejection and logout passed afterward. New encounters were exercised only with disposable local campaigns; no production encounter was started.
+
+
+### Scoped stylesheet generation
+
+Restricted Tailwind source discovery to the application directory, excluding unused generated components. Production build passed. CSS decreased from 147,096 to 21,820 raw bytes (85.2%); local gzip decreased from 24,864 to 5,760 bytes. These are asset sizes, not measured page-speed improvements. Browser checks against the production build confirmed campaign list, Adventure, tactical grid, selected enemy controls, and character dialog rendering. No gameplay behavior changed.
