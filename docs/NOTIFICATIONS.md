@@ -120,3 +120,13 @@ requests, non-following redirects, provider failure classification, Retry-After,
 revoked memberships/sessions, batch limits, overlapping ticks and late responses.
 The HTTP test harness explicitly pauses outbound push delivery and uses disposable
 keys, so routine CI never contacts a browser provider.
+
+
+### Returning from an alert
+
+Notification data retains only the validated campaign ID. Clicking an alert reloads
+that campaign through the normal authenticated loader, preferring an already-open
+matching tab. If the tab closed or navigation fails, a new same-origin tab opens.
+Malformed or older alert data falls back to the lobby; arbitrary URLs are ignored.
+Worker tests cover cross-campaign navigation, fresh loading, matching-tab preference,
+closed-tab fallback and malformed data. A real OS notification click remains unverified.

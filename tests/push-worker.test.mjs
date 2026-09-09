@@ -57,41 +57,98 @@ await test('push worker displays only generic text with stable replacement tags 
   assert.equal(w.shown[0].renotify, false);
   assert.equal(w.handlers.fetch, undefined);
 });
-await test('notification click ignores remote destinations and focuses only this origin', async () => {
-  let focused = 0,
-    closed = 0,
-    pending = Promise.resolve();
+
+async function click(w, data) {
+  let pending = Promise.resolve(),
+    closed = false;
+  w.handlers.notificationclick({
+    notification: {
+      data,
+      close: () => {
+        closed = true;
+      },
+    },
+    waitUntil: (p) => {
+      pending = p;
+    },
+  });
+  await pending;
+  assert.equal(closed, true);
+}
+await test('click navigates to the alerted campaign and reloads saved state instead of focusing an unrelated campaign', async () => {
+  const navigations = [];
+  let focused = 0;
+  const current = {
+    url: 'https://game.example/?campaign=other',
+    navigate: async (url) => {
+      navigations.push(url);
+      return {
+        focus: async () => {
+          focused++;
+        },
+      };
+    },
+  };
   const w = worker([
-    { url: 'https://evil.example', focus: () => assert.fail('foreign window') },
     {
-      url: 'https://game.example/?campaign=a',
-      focus: async () => {
-        focused++;
+      url: 'https://evil.example',
+      navigate: () => assert.fail('foreign window'),
+    },
+    current,
+  ]);
+  await click(w, { campaignId: 'campaign-a', url: 'https://evil.example' });
+  assert.deepEqual(navigations, ['https://game.example/?campaign=campaign-a']);
+  assert.equal(focused, 1);
+  assert.deepEqual(w.opened, []);
+});
+await test('click prefers an already-open matching campaign and still reloads it', async () => {
+  let refreshed = false;
+  const w = worker([
+    {
+      url: 'https://game.example/?campaign=other',
+      navigate: () => assert.fail('wrong tab'),
+    },
+    {
+      url: 'https://game.example/?campaign=campaign-a',
+      navigate: async (url) => {
+        assert.equal(url, 'https://game.example/?campaign=campaign-a');
+        refreshed = true;
+        return { focus: async () => {} };
       },
     },
   ]);
-  w.handlers.notificationclick({
-    notification: {
-      data: { url: 'https://evil.example' },
-      close: () => {
-        closed++;
+  await click(w, { campaignId: 'campaign-a' });
+  assert.equal(refreshed, true);
+});
+await test('click opens a new campaign tab when none exists or an old tab disappears', async () => {
+  for (const windows of [
+    [],
+    [{ url: 'https://game.example/', navigate: async () => null }],
+    [
+      {
+        url: 'https://game.example/',
+        navigate: async () => {
+          throw Error('closed');
+        },
       },
-    },
-    waitUntil: (p) => {
-      pending = p;
-    },
-  });
-  await pending;
-  assert.equal(focused, 1);
-  assert.equal(closed, 1);
-  assert.deepEqual(w.opened, []);
-  const empty = worker();
-  empty.handlers.notificationclick({
-    notification: { close: () => {} },
-    waitUntil: (p) => {
-      pending = p;
-    },
-  });
-  await pending;
-  assert.deepEqual(empty.opened, ['/']);
+    ],
+  ]) {
+    const w = worker(windows);
+    await click(w, { campaignId: 'campaign-a' });
+    assert.deepEqual(w.opened, ['https://game.example/?campaign=campaign-a']);
+  }
+});
+await test('malformed and legacy alert data can only open the local lobby', async () => {
+  for (const data of [
+    undefined,
+    { url: 'https://evil.example' },
+    { campaignId: '../evil' },
+    { campaignId: 'a&invite=secret' },
+    { campaignId: 'https://evil.example' },
+    { campaignId: 'a'.repeat(81) },
+  ]) {
+    const w = worker([{ url: 'not a URL' }]);
+    await click(w, data);
+    assert.deepEqual(w.opened, ['https://game.example/']);
+  }
 });
