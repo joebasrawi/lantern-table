@@ -80,3 +80,6 @@ Accepted host handoffs change permissions and rotate campaign invitations in a s
 
 
 Account deletion is available from Account. Preserve `deleted_accounts` in backups so old environment-provisioned identities stay deleted. Remove deleted users’ provisioning entries from `LANTERN_ACCOUNTS` separately. File cleanup retries run every minute independently of the timed-turn flag; database deletion completes first, with failed file cleanup tracked durably. Shared contributions in surviving campaigns remain. See the README’s account-deletion section for confirmation, active-campaign and legacy-file limits.
+
+
+Opt-in browser turn notifications use persistent VAPID keys and the existing minute background interval, independently of timed combat. See [NOTIFICATIONS.md](NOTIFICATIONS.md) for setup, pausing, revocation and tested-device limits.

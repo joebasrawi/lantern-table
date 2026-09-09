@@ -50,6 +50,8 @@ for (const name of [
   'notification-queue',
   'push-subscriptions',
   'notifications',
+  'push-config',
+  'push-delivery',
 ]) {
   writeFileSync(
     `.test-build/railway/${name}.js`,
@@ -64,6 +66,7 @@ for (const name of [
         "from '../game/notification-cue'",
         "from '../notification-cue.js'",
       )
+      .replace("from './push-config'", "from './push-config.js'")
       .replace("from './notification-queue'", "from './notification-queue.js'")
       .replace("from './push-subscriptions'", "from './push-subscriptions.js'")
       .replace("from './storage'", "from './storage.js'")

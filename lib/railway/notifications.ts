@@ -1,3 +1,4 @@
+import { pushConfig } from './push-config';
 import { createHash } from 'node:crypto';
 import { sqlite } from './storage';
 import {
@@ -10,14 +11,12 @@ const json = (data: unknown, status = 200) =>
   Response.json(data, { status, headers: { 'Cache-Control': 'no-store' } });
 export async function notifications(request: Request, userId: string | null) {
   if (!userId) return json({ error: 'Sign in to manage notifications.' }, 401);
-  const enabled =
-    process.env.LANTERN_PUSH_ENABLED === 'true' &&
-    !!process.env.LANTERN_VAPID_PUBLIC_KEY &&
-    !!process.env.LANTERN_VAPID_PRIVATE_KEY;
+  const config = pushConfig();
+  const enabled = !!config;
   if (request.method === 'GET')
     return json({
       enabled,
-      publicKey: enabled ? process.env.LANTERN_VAPID_PUBLIC_KEY : null,
+      publicKey: config?.publicKey ?? null,
     });
   if (request.method !== 'POST')
     return json({ error: 'Method not allowed.' }, 405);

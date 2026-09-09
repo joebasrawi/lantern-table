@@ -196,8 +196,14 @@ await test('subscription endpoints require authentication, same origin, JSON and
 });
 await test('enabled API registers, reports only ownership and revokes while disabled without returning secrets', async () => {
   process.env.LANTERN_PUSH_ENABLED = 'true';
-  process.env.LANTERN_VAPID_PUBLIC_KEY = 'test-public-key';
-  process.env.LANTERN_VAPID_PRIVATE_KEY = 'SECRET PRIVATE KEY';
+  const vapid = createECDH('prime256v1');
+  vapid.generateKeys();
+  process.env.LANTERN_VAPID_PUBLIC_KEY = vapid
+    .getPublicKey()
+    .toString('base64url');
+  process.env.LANTERN_VAPID_PRIVATE_KEY = vapid
+    .getPrivateKey()
+    .toString('base64url');
   const value = subscription('api');
   const result = await notifications(
     request({ op: 'subscribe', userId: 'one', subscription: value }),
@@ -211,7 +217,7 @@ await test('enabled API registers, reports only ownership and revokes while disa
   );
   assert.deepEqual(await config.json(), {
     enabled: true,
-    publicKey: 'test-public-key',
+    publicKey: process.env.LANTERN_VAPID_PUBLIC_KEY,
   });
   const other = await notifications(
     request({ op: 'status', endpoint: value.endpoint }),

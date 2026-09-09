@@ -51,7 +51,7 @@ if (process.env.TEST_PUSH === 'true') {
   assert.equal(config.headers.get('cache-control'), 'no-store');
   assert.deepEqual(await config.json(), {
     enabled: true,
-    publicKey: 'test-public-key',
+    publicKey: process.env.TEST_PUSH_PUBLIC_KEY,
   });
   const pair = createECDH('prime256v1');
   pair.generateKeys();

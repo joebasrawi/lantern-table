@@ -1,7 +1,7 @@
 import { mkdtempSync, writeFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { randomBytes, randomUUID, scryptSync } from 'node:crypto';
+import { randomBytes, randomUUID, scryptSync, createECDH } from 'node:crypto';
 import { spawn } from 'node:child_process';
 import { once } from 'node:events';
 
@@ -26,6 +26,8 @@ for (const id of ['local_1', 'local_2', 'local_3']) {
 }
 const accountFile = join(folder, 'credentials.json');
 writeFileSync(accountFile, JSON.stringify(credentials), { mode: 0o600 });
+const vapid = createECDH('prime256v1');
+vapid.generateKeys();
 let server;
 try {
   // Never attach this test to an unrelated server already using the port.
@@ -46,8 +48,10 @@ try {
         LANTERN_ACCOUNTS: JSON.stringify(accounts),
         LANTERN_BACKGROUND_TURNS: 'false',
         LANTERN_PUSH_ENABLED: 'true',
-        LANTERN_VAPID_PUBLIC_KEY: 'test-public-key',
-        LANTERN_VAPID_PRIVATE_KEY: 'test-private-key',
+        LANTERN_PUSH_PAUSED: 'true',
+        LANTERN_VAPID_SUBJECT: 'https://game.example',
+        LANTERN_VAPID_PUBLIC_KEY: vapid.getPublicKey().toString('base64url'),
+        LANTERN_VAPID_PRIVATE_KEY: vapid.getPrivateKey().toString('base64url'),
         OPENAI_API_KEY: 'test-placeholder-not-a-key',
         LANTERN_AI_DAILY_LIMIT: '0',
         LANTERN_PORTRAITS_ENABLED: 'true',
@@ -82,6 +86,7 @@ try {
       TEST_ORIGIN: origin,
       TEST_ACCOUNTS_FILE: accountFile,
       TEST_PUSH: 'true',
+      TEST_PUSH_PUBLIC_KEY: vapid.getPublicKey().toString('base64url'),
       TEST_AI_PAUSED: 'true',
       TEST_PORTRAIT_PAUSED: 'true',
     },

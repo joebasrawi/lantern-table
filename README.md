@@ -79,7 +79,7 @@ This is the first playable milestone, not the finished platform. See `docs/PRODU
 
 - Semantic recall and archival beyond the current keyword-based history search, richer AI encounter direction, and expanded custom ability effects beyond the three validated templates.
 - Expanded equipment mechanics and rule content. Generated character portrait previews are available when enabled by the server owner. Character identity, concept, and preset portrait can already be edited.
-- Notifications, simultaneous combat, delegation, and co-hosts; accepted host handoff and character-preserving campaign departure are implemented. The Railway deadline processor is already deployed. DM/rule/voting changes are already staged until current play finishes.
+- Broader notification/device verification, simultaneous combat, delegation, and co-hosts; accepted host handoff and character-preserving campaign departure are implemented. The Railway deadline processor is already deployed. DM/rule/voting changes are already staged until current play finishes.
 - Broader tactical maps, world map editing, voice/ambience, additional genre artwork.
 - Live verification of self-hosted identity, provider choice/local models, broader cost/billing controls and public onboarding. Persistent AI/image request allowances are implemented; they are not dollar budgets.
 - Multi-device browser and accessibility testing before claiming release readiness.
@@ -228,3 +228,15 @@ Deletion transactionally removes the account, all sessions, password-reset and p
 Private artwork identified by owner metadata or saved archived portrait references is cleaned up after the database transaction. Failed cleanup stays queued and is retried by the Railway background worker, even when timed combat is disabled. Shared artwork still referenced by another campaign is preserved. Uploads already running when an account is deleted cannot recreate its private files. Older unreferenced files without owner metadata require operator cleanup; unrelated backups and deployment settings are managed separately.
 
 A minimal deleted-ID record prevents `LANTERN_ACCOUNTS` from recreating the old identity after restart, and database guards reject late campaign/member inserts for that ID. Keep these records when backing up/restoring the database. Operators should also remove obsolete provisioning entries from deployment settings; deleting an account does not edit Railway configuration or erase external backups. These controls apply to Railway password accounts; Cloudflare Access identity lifecycle is managed by its identity provider.
+
+
+### Browser turn notifications (Railway)
+
+Players can opt in from **Turn notifications** in the adventure list. Alerts use
+generic text for combat turns, votes and dungeon-master work; story details stay
+in the game. Closing a tab preserves the opt-in, while signing out or revoking its
+session removes it. Turn off unsubscribes that browser. Hosting must configure a
+persistent VAPID pair and enable push; no email-sending domain is needed. Safari
+registration, closed-tab provider acceptance and unsubscribe were verified locally;
+OS banner display, notification clicks and physical-phone coverage remain unverified.
+See [notification setup and evidence](docs/NOTIFICATIONS.md).

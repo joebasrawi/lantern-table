@@ -179,17 +179,19 @@ export function settleNotification(
   item: NotificationClaim,
   outcome: 'sent' | 'retry' | 'failed',
   now = Date.now(),
+  minimumRetryAt = 0,
 ) {
   return db
     .prepare(`UPDATE push_notifications SET
     status=CASE WHEN ?='retry' AND attempts<5 THEN 'pending'
       WHEN ?='sent' THEN 'sent' ELSE 'failed' END,
-    next_attempt=? + MIN(3600000,60000 * (1 << attempts)),claim=NULL
+    next_attempt=MAX(? + MIN(3600000,60000 * (1 << attempts)),?),claim=NULL
     WHERE subscription_id=? AND campaign_id=? AND claim=? AND status='inflight'`)
     .run(
       outcome,
       outcome,
       now,
+      minimumRetryAt,
       item.subscriptionId,
       item.campaignId,
       item.claim,
