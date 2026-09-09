@@ -47,6 +47,9 @@ await test('only campaign and invite destinations are retained; extra tracking p
     null,
     {},
     '/?campaign=',
+    '/?invite=abc\n',
+    '/?campaign=abc\r',
+    '/?campaign=abc\u2028',
   ])
     assert.equal(gameReturnPath(value), '/');
   assert.equal(gameSignInHref('/'), '/api/auth');
