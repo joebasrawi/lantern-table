@@ -1,5 +1,6 @@
 'use client';
 import { TurnNotifications } from './turn-notifications';
+import { gameSignInHref } from '../lib/game-return';
 import { RulesGuide } from './rules-guide';
 // Auth endpoints are dispatch-owned and require full top-level navigation.
 /* oxlint-disable next/no-html-link-for-pages */
@@ -507,7 +508,7 @@ export default function Game() {
                     className="primary button-link"
                     href={
                       __LANTERN_RAILWAY__
-                        ? '/api/auth'
+                        ? gameSignInHref(locationSafe())
                         : __LANTERN_STANDALONE__
                           ? locationSafe()
                           : `/signin-with-chatgpt?return_to=${encodeURIComponent(locationSafe())}`

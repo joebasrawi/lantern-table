@@ -240,3 +240,10 @@ persistent VAPID pair and enable push; no email-sending domain is needed. Safari
 registration, closed-tab provider acceptance and unsubscribe were verified locally;
 OS banner display, notification clicks and physical-phone coverage remain unverified.
 See [notification setup and evidence](docs/NOTIFICATIONS.md).
+
+
+Password sign-in on Railway preserves a campaign or invitation link, including
+a retry after an incorrect password. After login, campaign links load saved state
+and invitation links prefill the join form. The destination is restricted to these
+game routes; external URLs and arbitrary account actions are discarded. Signup
+and email-recovery continuation are separate flows and are not covered by this behavior.

@@ -1,3 +1,4 @@
+import { gameReturnPath } from '../game-return';
 import {
   deletionTables,
   deletionMemberships,
@@ -79,9 +80,11 @@ function sessionToken(request: Request) {
 }
 const authStyle =
   'body{margin:0;background:#0c0e0d;color:#eeeade;font:16px system-ui;min-height:100vh;display:grid;place-items:center}main{width:min(340px,calc(100% - 48px));padding:40px 0}h1{font:32px Georgia}p{color:#b7b9b0;line-height:1.6}label{display:block;margin:20px 0 8px}input,button{box-sizing:border-box;width:100%;padding:13px;border-radius:5px;font:inherit}input{border:1px solid #45483d;background:#161915;color:inherit}button{margin-top:24px;border:0;background:#cebd8d;color:#171910;cursor:pointer}a{color:#cebd8d}.error{color:#efb2a8}';
-function page(error = '', status = 200, change = false) {
+function page(error = '', status = 200, change = false, destination = '/') {
+  const returnTo = gameReturnPath(destination);
   return new Response(
-    `<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${change ? 'Change password' : 'Sign in'} · Lantern Table</title><style>${authStyle}</style><main><a href="/">Lantern Table</a><h1>${change ? 'Change password' : 'Welcome back.'}</h1><p>${change ? 'Choose a password of 12–200 characters. You will be signed out on all devices afterward.' : 'Sign in to return to your adventures.'}</p>${error ? '<p role="alert" class="error">' + error + '</p>' : ''}<form method="post" action="/api/auth${change ? '?password' : ''}">${change ? '' : '<label for="email">Email</label><input id="email" name="email" type="email" required autocomplete="username" maxlength="254">'}<label for="password">${change ? 'Current password' : 'Password'}</label><input id="password" name="password" type="password" required autocomplete="current-password" maxlength="200">${change ? '<label for="newPassword">New password</label><input id="newPassword" name="newPassword" type="password" required autocomplete="new-password" minlength="12" maxlength="200"><label for="confirmPassword">Confirm new password</label><input id="confirmPassword" name="confirmPassword" type="password" required autocomplete="new-password" minlength="12" maxlength="200">' : ''}<button>${change ? 'Change password' : 'Sign in'}</button></form>${change ? '' : '<p><a href=/api/auth?forgot>Forgot your password?</a></p><p>This is a private table. Ask your host for an account.</p>'}${!change && signupEnabled() ? '<p><a href=/api/auth?signup>Create an account</a></p>' : ''}</main></html>`,
+    `<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${change ? 'Change password' : 'Sign in'} · Lantern Table</title><style>${authStyle}</style><main><a href="/">Lantern Table</a><h1>${change ? 'Change password' : 'Welcome back.'}</h1><p>${change ? 'Choose a password of 12–200 characters. You will be signed out on all devices afterward.' : 'Sign in to return to your adventures.'}</p>${error ? '<p role="alert" class="error">' + error + '</p>' : ''}<form method="post" action="/api/auth${change ? '?password' : ''}">${change ? '' : `<input type="hidden" name="returnTo" value="${returnTo}">`}
+${change ? '' : '<label for="email">Email</label><input id="email" name="email" type="email" required autocomplete="username" maxlength="254">'}<label for="password">${change ? 'Current password' : 'Password'}</label><input id="password" name="password" type="password" required autocomplete="current-password" maxlength="200">${change ? '<label for="newPassword">New password</label><input id="newPassword" name="newPassword" type="password" required autocomplete="new-password" minlength="12" maxlength="200"><label for="confirmPassword">Confirm new password</label><input id="confirmPassword" name="confirmPassword" type="password" required autocomplete="new-password" minlength="12" maxlength="200">' : ''}<button>${change ? 'Change password' : 'Sign in'}</button></form>${change ? '' : '<p><a href=/api/auth?forgot>Forgot your password?</a></p><p>This is a private table. Ask your host for an account.</p>'}${!change && signupEnabled() ? '<p><a href=/api/auth?signup>Create an account</a></p>' : ''}</main></html>`,
     {
       status,
       headers: {
@@ -192,6 +195,9 @@ export async function authGet(request: Request) {
     new URL(request.url).searchParams.has('changed')
       ? 'Password changed. Sign in with your new password.'
       : '',
+    200,
+    false,
+    gameReturnPath(params.get('returnTo')),
   );
 }
 export async function authPost(request: Request) {
@@ -239,12 +245,13 @@ export async function authPost(request: Request) {
         )
       : (form.get('email') || '').trim().toLowerCase(),
     password = form.get('password') || '';
+  const returnTo = protectedAction ? '/' : gameReturnPath(form.get('returnTo'));
   const respond = (message: string, status: number) =>
     remove
       ? deletionPage(user!.id, message, status)
       : revoke
         ? accountPage(user!.id, sessionToken(request)!, message, status)
-        : page(message, status, change);
+        : page(message, status, change, returnTo);
   if (remove && form.get('confirm') !== 'DELETE')
     return respond('Type DELETE to confirm account deletion.', 400);
   const newPassword = form.get('newPassword') || '';
@@ -405,7 +412,7 @@ export async function authPost(request: Request) {
   return new Response(null, {
     status: 303,
     headers: {
-      Location: '/',
+      Location: returnTo,
       'Set-Cookie': cookie(token, 30 * 86400),
       'Cache-Control': 'no-store',
     },

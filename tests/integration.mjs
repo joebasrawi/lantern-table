@@ -151,6 +151,42 @@ let a = (
 ).data;
 assert.ok(a.id, JSON.stringify(a));
 const id = a.id;
+if (credentials) {
+  for (const target of ['/?campaign=' + id, '/?invite=' + a.invite]) {
+    const form = await fetch(
+      base + '/api/auth?returnTo=' + encodeURIComponent(target),
+    );
+    assert.equal(form.status, 200);
+    assert.ok(
+      (await form.text()).includes('name="returnTo" value="' + target + '"'),
+    );
+    const result = await fetch(base + '/api/auth', {
+      method: 'POST',
+      headers: { Origin: base },
+      body: new URLSearchParams({ ...credentials.local_1, returnTo: target }),
+      redirect: 'manual',
+    });
+    assert.equal(result.status, 303);
+    assert.equal(result.headers.get('location'), target);
+    const cookie = result.headers.get('set-cookie').split(';')[0];
+    assert.equal(
+      (
+        await fetch(base + '/api/game?id=' + id, {
+          headers: { Cookie: cookie },
+        })
+      ).status,
+      200,
+    );
+    await fetch(base + '/api/auth?logout', {
+      headers: { Cookie: cookie },
+      redirect: 'manual',
+    });
+  }
+  console.log(
+    'PASS: campaign and invitation destinations survive real password sign-in',
+  );
+}
+
 const get = async (user) => (await api(user, null, `?id=${id}`)).data;
 async function post(user, body) {
   const c = await get(user);

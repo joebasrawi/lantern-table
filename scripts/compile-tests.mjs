@@ -66,6 +66,7 @@ for (const name of [
         "from '../game/notification-cue'",
         "from '../notification-cue.js'",
       )
+      .replace("from '../game-return'", "from '../game-return.js'")
       .replace("from './push-config'", "from './push-config.js'")
       .replace("from './notification-queue'", "from './notification-queue.js'")
       .replace("from './push-subscriptions'", "from './push-subscriptions.js'")
@@ -79,6 +80,16 @@ for (const name of [
 writeFileSync(
   '.test-build/action-drafts.js',
   ts.transpileModule(readFileSync('lib/action-drafts.ts', 'utf8'), {
+    compilerOptions: {
+      target: ts.ScriptTarget.ES2022,
+      module: ts.ModuleKind.ESNext,
+    },
+  }).outputText,
+);
+
+writeFileSync(
+  '.test-build/game-return.js',
+  ts.transpileModule(readFileSync('lib/game-return.ts', 'utf8'), {
     compilerOptions: {
       target: ts.ScriptTarget.ES2022,
       module: ts.ModuleKind.ESNext,

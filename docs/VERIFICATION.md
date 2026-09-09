@@ -319,3 +319,10 @@ Safari granted notification permission for a disposable local account and displa
 ## Notification campaign navigation
 
 Notification clicks now retain a validated campaign ID and navigate through the normal authenticated loader. A matching open campaign is preferred and reloaded; a different game tab is navigated to the requested campaign; a closed/missing tab falls back to a new tab. Malformed and legacy data can only open the lobby. The worker continues to ignore arbitrary URLs and never cache game requests. Five worker tests cover these cases; all 131 unit tests and lint passed locally. This verifies handler behavior, not a physical OS notification click. Deployment verification follows separately.
+
+
+## Invitation and campaign return after password sign-in
+
+Railway sign-in now retains only an allowed campaign or invitation destination, including through incorrect-password retry. Redirects cannot select external URLs, arbitrary account routes, fragments or injected markup. Three focused tests cover destination selection, error preservation and real authentication redirects; the Railway HTTP multiplayer suite also signs in through both allowed destination types. All 134 tests, local typecheck/lint, Railway build and HTTP multiplayer/font checks passed.
+
+Two disposable browser journeys passed: a signed-out invitation retained its code through login and opened the campaign after Join; a separate signed-out campaign URL returned directly to the saved character and story after login. Both browser tabs and local servers were closed. This covers password sign-in; signup and email recovery continuation remain separate, unverified flows. Deployment evidence follows separately.
